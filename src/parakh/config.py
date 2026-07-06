@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     artifacts_dir: Path = PACKAGE_ROOT / "artifacts"
     random_seed: int = 42
     validation_fraction: float = 0.2
+    cors_origins: list[str] = ["*"]
 
     llm_base_url: str = Field(default="", validation_alias="VLLM_URL")
     llm_model: str = Field(default="gemma-4-31b-it", validation_alias="VLLM_MODEL_NAME")

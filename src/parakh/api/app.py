@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from parakh.config import settings
@@ -10,6 +11,12 @@ from parakh.consent.artefact import create_consent
 from parakh.scoring.card import CardService
 
 app = FastAPI(title="PARAKH", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 _ARTIFACT = settings.artifacts_dir / "health_model.joblib"
 _service: CardService | None = None
