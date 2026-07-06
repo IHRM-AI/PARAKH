@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PARAKH — Financial Health Score · IDBI Innovate 2026</title>
+<style>
+  :root{
+    --bg:#F4F6F5;
+    --bg-tint:#EAF3F0;
+    --card:#FFFFFF;
+    --ink:#0E1A17;
+    --ink-2:#33463F;
+    --muted:#6B7C76;
+    --faint:#95A39D;
+    --line:#E4E9E7;
+    --line-soft:#EEF2F0;
+    --idbi:#00836C;
+    --idbi-deep:#006755;
+    --idbi-bright:#10A385;
+    --idbi-wash:#E6F3EF;
+    --saffron:#F59E0B;
+    --saffron-wash:#FEF3E2;
+    --ok:#16A34A;
+    --ok-wash:#E7F6EC;
+    --warn:#D97706;
+    --warn-wash:#FDF1E1;
+    --danger:#DC2626;
+    --danger-wash:#FCEBEA;
+    --danger-line:#F5C6C4;
+    --phone:#FBFDFC;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans Devanagari",sans-serif;
+    font-size:13px;
+    font-variant-numeric:tabular-nums;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;}
+
+  /* ===== STAGE : locks 1440x900 ===== */
+  .stage{
+    width:1440px;height:900px;margin:0 auto;position:relative;
+    display:flex;flex-direction:column;
+    background:
+      radial-gradient(1100px 560px at 50% -8%, rgba(0,131,108,.10), transparent 62%),
+      radial-gradient(780px 520px at 12% 8%, rgba(16,163,133,.06), transparent 60%),
+      radial-gradient(780px 520px at 88% 12%, rgba(245,158,11,.05), transparent 60%),
+      linear-gradient(180deg,#F1F6F4 0%, #F4F6F5 100%);
+    overflow:hidden;
+  }
+
+  /* ===== TOP RIBBON ===== */
+  .ribbon{
+    height:52px;flex:none;display:flex;align-items:center;gap:14px;padding:0 26px;
+    background:rgba(255,255,255,.72);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:11px;}
+  .brand-mark{width:34px;height:34px;flex:none;}
+  .brand-txt .bt-1{font-size:15px;font-weight:750;letter-spacing:.01em;color:var(--ink);line-height:1.05;}
+  .brand-txt .bt-2{font-size:9.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--idbi);margin-top:2px;}
+  .ribbon-tag{
+    margin-left:6px;font-size:10px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--idbi-deep);background:var(--idbi-wash);border:1px solid #CDE7E0;border-radius:20px;padding:4px 11px;
+  }
+  .ribbon-right{margin-left:auto;display:flex;align-items:center;gap:16px;}
+  .ribbon-hack{display:flex;flex-direction:column;align-items:flex-end;gap:1px;}
+  .ribbon-hack .rh-1{font-size:11px;font-weight:700;color:var(--ink);}
+  .ribbon-hack .rh-2{font-size:9.5px;color:var(--faint);letter-spacing:.04em;}
+  .live-pill{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:600;color:var(--ink-2);
+    background:#fff;border:1px solid var(--line);border-radius:20px;padding:5px 12px;}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(22,163,74,.16);}
+
+  /* ===== 3-PANEL BODY ===== */
+  .body{
+    flex:1;min-height:0;display:grid;
+    grid-template-columns:404px 1fr 404px;
+    gap:20px;padding:18px 26px 14px;
+  }
+  .col{display:flex;flex-direction:column;gap:14px;min-height:0;}
+  .col-head{display:flex;align-items:center;gap:9px;padding:0 2px;}
+  .col-head .ch-ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;}
+  .col-head .ch-t1{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.1;}
+  .col-head .ch-t2{font-size:10px;color:var(--faint);letter-spacing:.05em;margin-top:1px;}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px;
+    box-shadow:0 1px 0 rgba(16,40,34,.02),0 6px 20px -14px rgba(16,40,34,.18);
+  }
+  .card-t{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+  .card-t .ct-l{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+  .pill{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.02em;}
+  .pill.ok{color:var(--ok);background:var(--ok-wash);}
+  .pill.warn{color:var(--warn);background:var(--warn-wash);}
+  .pill.danger{color:var(--danger);background:var(--danger-wash);}
+  .pill.idbi{color:var(--idbi-deep);background:var(--idbi-wash);}
+
+  .kv{display:flex;align-items:baseline;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line-soft);}
+  .kv:last-child{border-bottom:none;}
+  .kv .k{font-size:11.5px;color:var(--muted);}
+  .kv .v{font-size:13px;font-weight:650;color:var(--ink);}
+  .kv .v small{font-size:10px;font-weight:600;color:var(--faint);}
+
+  .btn{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+    font-size:12.5px;font-weight:700;letter-spacing:.01em;color:#fff;
+    background:linear-gradient(180deg,var(--idbi-bright),var(--idbi));
+    border:1px solid var(--idbi-deep);border-radius:10px;padding:11px 14px;cursor:pointer;
+    box-shadow:0 8px 18px -10px rgba(0,131,108,.7);transition:transform .12s, box-shadow .12s, filter .12s;
+  }
+  .btn:hover{filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 12px 22px -10px rgba(0,131,108,.75);}
+  .btn svg{width:15px;height:15px;stroke:#fff;}
+
+  /* ===== CENTER — phone ===== */
+  .center{align-items:center;justify-content:flex-start;position:relative;}
+  .center::before{
+    content:"";position:absolute;inset:-18px 30px 6px;border-radius:40px;
+    background:radial-gradient(420px 520px at 50% 20%, rgba(0,131,108,.14), rgba(16,163,133,.05) 55%, transparent 78%);
+    z-index:0;pointer-events:none;
+  }
+  .phone-label{position:relative;z-index:1;text-align:center;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+  .phone-label .pl-1{font-size:11.5px;font-weight:700;color:var(--idbi-deep);letter-spacing:.02em;}
+  .phone-label .pl-2{font-size:10px;color:var(--muted);}
+  .phone-label .pl-sep{width:3px;height:3px;border-radius:50%;background:var(--faint);}
+  .phone{
+    position:relative;z-index:1;width:384px;height:752px;flex:none;
+    background:#0E1A17;border-radius:44px;padding:11px;
+    box-shadow:0 40px 70px -30px rgba(10,34,28,.55),0 6px 18px -6px rgba(10,34,28,.3),inset 0 0 0 2px #223029;
+  }
+  .phone-notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:128px;height:26px;
+    background:#0E1A17;border-radius:0 0 16px 16px;z-index:5;}
+  .phone-notch::after{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:44px;height:5px;border-radius:3px;background:#26332C;}
+  .screen{
+    width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--phone);
+    display:flex;flex-direction:column;
+  }
+  .scr-status{height:26px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px 0 26px;
+    font-size:11px;font-weight:650;color:var(--ink);}
+  .scr-status .sig{display:flex;align-items:center;gap:5px;}
+  .scr-status .sig svg{width:15px;height:12px;}
+  .scr-body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0 14px 6px;gap:5px;}
+
+  .scr-appbar{display:flex;align-items:center;gap:10px;padding:1px 2px 0;}
+  .scr-appbar .ab-ic{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--idbi),var(--idbi-bright));
+    display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 6px 12px -6px rgba(0,131,108,.7);}
+  .scr-appbar .ab-t1{font-size:14px;font-weight:750;color:var(--ink);line-height:1.1;}
+  .scr-appbar .ab-t2{font-size:10px;color:var(--muted);margin-top:1px;}
+
+  .aa-chip{display:flex;align-items:center;gap:7px;font-size:9.7px;line-height:1.3;color:var(--idbi-deep);
+    background:var(--idbi-wash);border:1px solid #CFE8E1;border-radius:10px;padding:6px 10px;}
+  .aa-chip .lk{font-size:11px;}
+  .aa-chip b{font-weight:700;}
+  .aa-chip .revoke{margin-left:auto;color:var(--idbi);font-weight:700;text-decoration:underline;cursor:pointer;flex:none;}
+
+  .hero{
+    background:linear-gradient(180deg,#FFFFFF, #F7FBF9);border:1px solid var(--line);border-radius:16px;
+    padding:5px 12px 8px;text-align:center;position:relative;
+  }
+  .hero .hero-cap{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:1px;}
+  .gauge-wrap{position:relative;width:276px;height:132px;margin:0 auto;}
+  .gauge-wrap > svg{width:276px;height:auto;display:block;}
+  .gauge-num{position:absolute;top:58px;left:50%;transform:translateX(-50%);text-align:center;}
+  .gauge-num .gn-v{font-size:42px;font-weight:800;color:var(--ink);line-height:.9;letter-spacing:-.02em;}
+  .gauge-num .gn-o{font-size:14px;font-weight:700;color:var(--faint);}
+  .gauge-num .gn-sub{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:3px;}
+  .grade-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:-4px;}
+  .grade{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:750;color:var(--idbi-deep);
+    background:var(--idbi-wash);border:1px solid #CDE7E0;border-radius:20px;padding:4px 11px;}
+  .grade .dot{width:8px;height:8px;border-radius:50%;background:var(--idbi);}
+  .prequal{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:750;color:#8A5A00;
+    background:var(--saffron-wash);border:1px solid #F6D9A3;border-radius:20px;padding:4px 11px;}
+  .prequal b{color:#7A4E00;}
+
+  .sect-t{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+    margin:0 2px;display:flex;align-items:center;gap:7px;}
+  .sect-t::after{content:"";flex:1;height:1px;background:var(--line);}
+
+  .rings{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+  .ring{background:#fff;border:1px solid var(--line);border-radius:11px;padding:4px 4px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;}
+  .ring-svg{position:relative;width:44px;height:44px;}
+  .ring-svg .rc-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:var(--ink);}
+  .ring-svg svg{width:44px;height:44px;display:block;}
+  .ring-lbl{font-size:8.5px;font-weight:600;color:var(--muted);text-align:center;line-height:1.15;letter-spacing:.01em;}
+
+  .reasons{display:flex;flex-direction:column;gap:4px;}
+  .reason{display:flex;gap:8px;align-items:flex-start;font-size:10.2px;line-height:1.3;color:var(--ink-2);
+    border:1px solid var(--line);border-radius:9px;padding:5px 9px;background:#fff;}
+  .reason .ri{font-size:12px;flex:none;line-height:1.2;margin-top:1px;}
+  .reason .delta{margin-left:auto;flex:none;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:8px;align-self:center;}
+  .reason.pos{border-color:#CFE8DD;background:#F5FBF8;}
+  .reason.pos .delta{color:var(--ok);background:var(--ok-wash);}
+  .reason.neg{border-color:#F3D8AE;background:#FEFAF2;}
+  .reason.neg .delta{color:var(--warn);background:var(--warn-wash);}
+  .reason.tip{border-color:#CFE0EC;background:#F4F9FC;}
+  .reason.tip .delta{color:#1D6FB8;background:#E7F1F9;}
+  .reason b{font-weight:700;color:var(--ink);}
+
+  .coach{background:linear-gradient(180deg,#F7FBF9,#FFFFFF);border:1px solid #CFE8E1;border-radius:14px;padding:8px 12px 9px;}
+  .coach-h{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:750;color:var(--idbi-deep);margin-bottom:6px;}
+  .coach-h .ci{font-size:13px;}
+  .coach-line{font-size:10.4px;line-height:1.4;color:var(--ink-2);}
+  .coach-line b{color:var(--ink);font-weight:750;}
+  .arrow{color:var(--idbi);font-weight:800;}
+  .slider-wrap{margin-top:7px;}
+  .slider-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;}
+  .slider-top .sl-k{font-size:10px;font-weight:600;color:var(--muted);}
+  .slider-top .sl-v{font-size:12.5px;font-weight:800;color:var(--idbi-deep);}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;
+    background:linear-gradient(90deg,var(--idbi) 0%, var(--idbi) var(--pct,35%), #E1EAE7 var(--pct,35%), #E1EAE7 100%);outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;
+    background:#fff;border:3px solid var(--idbi);box-shadow:0 3px 8px -2px rgba(0,131,108,.6);cursor:pointer;}
+  .slider-out{display:flex;gap:8px;margin-top:6px;}
+  .sout{flex:1;background:#fff;border:1px solid var(--line);border-radius:10px;padding:4px 9px;text-align:center;}
+  .sout .so-k{font-size:8.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);}
+  .sout .so-v{font-size:15px;font-weight:800;color:var(--ink);margin-top:1px;}
+  .sout .so-v .from{color:var(--faint);font-size:12px;font-weight:700;}
+  .sout .so-v .to{color:var(--idbi-deep);}
+  .sout.acc .so-v .to{color:#8A5A00;}
+
+  /* ===== LEFT/RIGHT specifics ===== */
+  .divergence{display:flex;align-items:center;justify-content:space-between;margin:9px 0 3px;padding:8px 10px;
+    background:var(--ok-wash);border:1px solid #C7E9D1;border-radius:10px;}
+  .divergence .dv-l{font-size:10.5px;font-weight:600;color:var(--ink-2);}
+  .divergence .dv-r{font-size:12px;font-weight:800;color:var(--ok);}
+
+  .tripwire{border:1px solid var(--danger-line);background:linear-gradient(180deg,#FEF6F5,#FFFFFF);
+    box-shadow:0 6px 18px -12px rgba(220,38,38,.4);}
+  .tripwire .tw-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .tripwire .tw-ic{width:26px;height:26px;border-radius:8px;background:var(--danger-wash);color:var(--danger);
+    display:flex;align-items:center;justify-content:center;font-size:14px;flex:none;}
+  .tripwire .tw-t1{font-size:12px;font-weight:750;color:var(--danger);line-height:1.1;}
+  .tripwire .tw-t2{font-size:9.5px;color:var(--muted);margin-top:1px;letter-spacing:.03em;}
+  .tw-cmp{display:flex;align-items:stretch;gap:8px;margin:2px 0 8px;}
+  .tw-box{flex:1;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 9px;}
+  .tw-box .tb-k{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);}
+  .tw-box .tb-v{font-size:15px;font-weight:800;color:var(--ink);margin-top:2px;}
+  .tw-box.gap{border-color:var(--danger-line);background:var(--danger-wash);}
+  .tw-box.gap .tb-v{color:var(--danger);}
+  .tw-arrow{display:flex;align-items:center;color:var(--faint);font-size:16px;}
+  .tw-msg{font-size:10.3px;line-height:1.4;color:var(--ink-2);}
+  .tw-msg b{color:var(--danger);font-weight:750;}
+
+  /* sparkline card */
+  .spark-legend{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .spark-legend .who{font-size:12px;font-weight:750;color:var(--ink);}
+  .spark-legend .who small{font-weight:600;color:var(--faint);font-size:10px;}
+  .spark-svg{width:100%;height:auto;display:block;}
+  .spark-foot{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:10px;color:var(--muted);}
+  .spark-foot .flag{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:var(--danger);
+    background:var(--danger-wash);border:1px solid var(--danger-line);border-radius:8px;padding:3px 8px;}
+
+  /* code block */
+  .codewrap{margin-top:2px;}
+  .code-t{display:flex;align-items:center;gap:7px;font-size:9.5px;font-weight:700;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+  .code-t .badge{font-size:8.5px;font-weight:700;color:var(--idbi-deep);background:var(--idbi-wash);
+    border:1px solid #CDE7E0;border-radius:6px;padding:2px 6px;letter-spacing:.02em;text-transform:none;}
+  pre.code{
+    background:#0E1A17;color:#CFEDE4;border-radius:11px;padding:11px 13px;margin:0;overflow:hidden;
+    font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:9.6px;line-height:1.55;
+    border:1px solid #17332B;
+  }
+  pre.code .k{color:#7FD8C3;}
+  pre.code .s{color:#F0C88A;}
+  pre.code .n{color:#EDA9B4;}
+  pre.code .p{color:#6E8A82;}
+  pre.code .c{color:#5F776F;font-style:italic;}
+  .code-note{font-size:9.3px;line-height:1.4;color:var(--muted);margin-top:7px;padding-left:16px;position:relative;}
+  .code-note::before{content:"ℹ";position:absolute;left:0;top:0;color:var(--idbi);font-weight:700;}
+  .code-note b{color:var(--ink-2);font-weight:700;}
+
+  /* ===== FOOTER ===== */
+  .footer{
+    height:40px;flex:none;display:flex;align-items:center;justify-content:center;gap:0;
+    padding:0 26px;background:#0E1A17;color:#BFD8CF;
+  }
+  .footer .fx{display:flex;align-items:center;gap:9px;font-size:10.5px;font-weight:600;letter-spacing:.02em;flex-wrap:nowrap;white-space:nowrap;}
+  .footer .fx .sep{color:#3C544B;font-weight:400;}
+  .footer .fx b{color:#EAF6F1;font-weight:700;}
+  .footer .fx .tick{color:#4ADE9A;}
+</style>
+</head>
+<body>
+<div class="stage" role="img" aria-label="PARAKH financial health score product mockup">
+
+  <!-- ===================== TOP RIBBON ===================== -->
+  <div class="ribbon">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="1" y="1" width="38" height="38" rx="11" fill="#00836C"/>
+        <rect x="1" y="1" width="38" height="38" rx="11" stroke="#006755" stroke-width="1.4"/>
+        <path d="M20 9.5c-4.4 0-8 3.4-8 7.9 0 5.3 5.4 10.1 7.4 11.7.35.28.85.28 1.2 0 2-1.6 7.4-6.4 7.4-11.7 0-4.5-3.6-7.9-8-7.9Z" fill="#0FA88B"/>
+        <path d="M13.2 20.4h3.3l1.7-3.4 2.4 6 1.6-3.1h4.6" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <div class="brand-txt">
+        <div class="bt-1">MSME <span style="color:#00836C">Parakh</span> Card</div>
+        <div class="bt-2">Financial Health Score</div>
+      </div>
+    </div>
+    <span class="ribbon-tag">Powered by IDBI Bank</span>
+    <div class="ribbon-right">
+      <div class="live-pill"><span class="live-dot"></span> AA feed live · 3 lenders on rail</div>
+      <div class="ribbon-hack">
+        <div class="rh-1">IDBI Innovate 2026</div>
+        <div class="rh-2">Hackathon Submission · Prototype</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 3-PANEL BODY ===================== -->
+  <div class="body">
+
+    <!-- ============ LEFT : LENDER CONSOLE ============ -->
+    <div class="col">
+      <div class="col-head">
+        <div class="ch-ic" style="background:var(--idbi-wash);color:var(--idbi-deep);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
+        </div>
+        <div>
+          <div class="ch-t1">Lender Console</div>
+          <div class="ch-t2">i-MSME Express · Underwriting desk</div>
+        </div>
+      </div>
+
+      <!-- Sanction summary -->
+      <div class="card">
+        <div class="card-t">
+          <span class="ct-l">Sanction Summary</span>
+          <span class="pill idbi">Sharma Kirana</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <div style="width:52px;height:52px;border-radius:13px;background:var(--idbi-wash);border:1px solid #CDE7E0;
+              display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;">
+            <span class="num" style="font-size:22px;font-weight:800;color:var(--idbi-deep);line-height:1;">68</span>
+            <span style="font-size:8px;font-weight:700;color:var(--idbi);letter-spacing:.06em;">B+ GRADE</span>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:750;color:var(--ink);">Sharma Kirana Store</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">Indore, MP · Retail — General store</div>
+            <div style="font-size:9.5px;color:var(--faint);margin-top:2px;">GSTIN 23ABCDE1234F1Z5</div>
+          </div>
+        </div>
+        <div class="kv"><span class="k">Avg monthly credits (6M)</span><span class="v num">₹3.8 L</span></div>
+        <div class="kv"><span class="k">GST turnover · FY26</span><span class="v num">₹42 L</span></div>
+        <div class="kv"><span class="k">Vintage · seasonality</span><span class="v">6 yrs · stable</span></div>
+        <div class="divergence">
+          <span class="dv-l">GST-vs-banking divergence</span>
+          <span class="dv-r">4% &nbsp;✅</span>
+        </div>
+        <div class="kv" style="padding-top:8px;"><span class="k" style="font-weight:700;color:var(--ink-2);">Pre-qualified limit</span><span class="v num" style="font-size:16px;color:var(--idbi-deep);">₹4.2 L</span></div>
+      </div>
+
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 18h4"/></svg>
+        Draft Credit Memo → i-MSME Express
+      </button>
+
+      <!-- Tripwire (different borrower) -->
+      <div class="card tripwire">
+        <div class="tw-h">
+          <div class="tw-ic">⚠</div>
+          <div>
+            <div class="tw-t1">Divergence alert — Verma Traders</div>
+            <div class="tw-t2">GSTIN 23FGHIJ5678K2Z9 · Auto-tripwire fired</div>
+          </div>
+        </div>
+        <div class="tw-cmp">
+          <div class="tw-box">
+            <div class="tb-k">GST-declared turnover</div>
+            <div class="tb-v num">₹1.20 Cr</div>
+          </div>
+          <div class="tw-arrow">vs</div>
+          <div class="tw-box gap">
+            <div class="tb-k">Banking credits</div>
+            <div class="tb-v num">₹0.78 Cr</div>
+          </div>
+        </div>
+        <div class="tw-msg"><b>35% gap</b> between declared turnover and observed bank inflows — possible round-tripping / inflated GST. <b>Refer to manual review</b> before any sanction.</div>
+      </div>
+    </div>
+
+    <!-- ============ CENTER : PHONE ============ -->
+    <div class="col center">
+      <div class="phone-label">
+        <div class="pl-1">Borrower app · परख</div>
+        <span class="pl-sep"></span>
+        <div class="pl-2">What the MSME sees on their phone</div>
+      </div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="screen">
+          <!-- status bar -->
+          <div class="scr-status">
+            <span>9:41</span>
+            <span class="sig">
+              <svg viewBox="0 0 18 12" fill="none" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1" fill="#0E1A17"/><rect x="4" y="6" width="3" height="6" rx="1" fill="#0E1A17"/><rect x="8" y="3" width="3" height="9" rx="1" fill="#0E1A17"/><rect x="12" y="0" width="3" height="12" rx="1" fill="#0E1A17"/></svg>
+              <svg viewBox="0 0 24 12" width="22" height="11" aria-hidden="true"><rect x="1" y="1" width="19" height="10" rx="2.5" fill="none" stroke="#0E1A17" stroke-width="1.2"/><rect x="2.6" y="2.6" width="14" height="6.8" rx="1.4" fill="#0E1A17"/><rect x="21" y="4" width="2" height="4" rx="1" fill="#0E1A17"/></svg>
+            </span>
+          </div>
+
+          <div class="scr-body">
+            <!-- app bar -->
+            <div class="scr-appbar">
+              <div class="ab-ic">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 3 9 2-4h7"/></svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div class="ab-t1">परख · Parakh</div>
+                <div class="ab-t2">Sharma Kirana Store, Indore</div>
+              </div>
+            </div>
+
+            <!-- AA consent chip -->
+            <div class="aa-chip">
+              <span class="lk">🔗</span>
+              <span>Data via <b>Account Aggregator</b> · Consent valid till <b>04-Jan-2027</b></span>
+              <span class="revoke">Revoke</span>
+            </div>
+
+            <!-- HERO gauge -->
+            <div class="hero">
+              <div class="hero-cap">Your Parakh Score</div>
+              <div class="gauge-wrap">
+                <svg width="350" height="172" viewBox="0 0 350 172" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#DC2626"/>
+                      <stop offset="45%" stop-color="#F59E0B"/>
+                      <stop offset="78%" stop-color="#10A385"/>
+                      <stop offset="100%" stop-color="#00836C"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- track (cx=175 cy=165 r=130), semicircle left(45,165)->right(305,165) over top(175,35) -->
+                  <path d="M 45 165 A 130 130 0 0 1 305 165" fill="none" stroke="#EDF1EF" stroke-width="15" stroke-linecap="round"/>
+                  <!-- value arc to 68 -> endpoint (244.66,55.24) -->
+                  <path d="M 45 165 A 130 130 0 0 1 244.66 55.24" fill="none" stroke="url(#gaugeGrad)" stroke-width="15" stroke-linecap="round"/>
+                  <!-- ticks -->
+                  <g font-family="-apple-system,sans-serif" font-size="9" font-weight="600" fill="#95A39D">
+                    <text x="41" y="164" text-anchor="middle">0</text>
+                    <text x="175" y="30" text-anchor="middle">50</text>
+                    <text x="309" y="164" text-anchor="middle">100</text>
+                  </g>
+                  <!-- needle knob at 68 endpoint -->
+                  <circle cx="244.66" cy="55.24" r="8.5" fill="#fff" stroke="#00836C" stroke-width="4"/>
+                </svg>
+                <div class="gauge-num">
+                  <div><span class="gn-v num">68</span><span class="gn-o num">/100</span></div>
+                  <div class="gn-sub">Good · Improving</div>
+                </div>
+              </div>
+              <div class="grade-row">
+                <span class="grade"><span class="dot"></span>B+ · Loan-ready</span>
+                <span class="prequal">💰 <b>₹4.2 L</b> pre-qualified</span>
+              </div>
+            </div>
+
+            <!-- Dimension rings -->
+            <div class="sect-t">Score breakdown · 6 dimensions</div>
+            <div class="rings" id="rings"></div>
+
+            <!-- Reason codes -->
+            <div class="sect-t">Why this score · कारण</div>
+            <div class="reasons">
+              <div class="reason pos">
+                <span class="ri">✅</span>
+                <span>GST returns <b>12/12 महीने</b> समय पर भरे — भरोसा बढ़ा</span>
+                <span class="delta">+8</span>
+              </div>
+              <div class="reason neg">
+                <span class="ri">⚠️</span>
+                <span>महीने के अंत में बैलेंस <b>3 बार ₹5,000</b> से नीचे गया</span>
+                <span class="delta">−6</span>
+              </div>
+              <div class="reason tip">
+                <span class="ri">💡</span>
+                <span>UPI आवक <b>22% बढ़ी</b> — अच्छा संकेत, growth मजबूत</span>
+                <span class="delta">+4</span>
+              </div>
+            </div>
+
+            <!-- What-if coach -->
+            <div class="coach">
+              <div class="coach-h"><span class="ci">🎯</span> What-if Coach · स्कोर बढ़ाएँ</div>
+              <div class="coach-line">यदि आप हर महीने <b id="coachBal">₹15,000</b> minimum balance रखें <span class="arrow">→</span> स्कोर <b id="coachScoreLine">68→74</b>, eligible <b id="coachElig">₹4.2L→₹5.6L</b></div>
+              <div class="slider-wrap">
+                <div class="slider-top">
+                  <span class="sl-k">Monthly minimum balance रखें</span>
+                  <span class="sl-v num" id="sliderVal">₹15,000</span>
+                </div>
+                <input type="range" id="balSlider" min="0" max="40000" step="1000" value="15000" style="--pct:37.5%">
+                <div class="slider-out">
+                  <div class="sout">
+                    <div class="so-k">Projected Score</div>
+                    <div class="so-v num"><span class="from">68</span> → <span class="to" id="outScore">74</span></div>
+                  </div>
+                  <div class="sout acc">
+                    <div class="so-k">Eligible Amount</div>
+                    <div class="so-v num"><span class="from">₹4.2L</span> → <span class="to" id="outElig">₹5.6L</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ RIGHT : MONITORING ============ -->
+    <div class="col">
+      <div class="col-head">
+        <div class="ch-ic" style="background:var(--saffron-wash);color:#B26A00;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div>
+          <div class="ch-t1">Portfolio Monitoring</div>
+          <div class="ch-t2">Continuous score surveillance · Early warning</div>
+        </div>
+      </div>
+
+      <!-- Sparkline card -->
+      <div class="card">
+        <div class="card-t">
+          <span class="ct-l">12-Month Score Trend</span>
+          <span class="pill danger">Deteriorating</span>
+        </div>
+        <div class="spark-legend">
+          <div class="who">Gupta Textiles <small>· GSTIN 23KLMNO9012P3Z1</small></div>
+          <div style="text-align:right;">
+            <span class="num" style="font-size:11px;font-weight:800;color:var(--danger);">71 → 54</span>
+            <div style="font-size:9px;color:var(--faint);">−17 pts over 12M</div>
+          </div>
+        </div>
+        <svg class="spark-svg" viewBox="0 0 300 118" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(220,38,38,.16)"/>
+              <stop offset="100%" stop-color="rgba(220,38,38,0)"/>
+            </linearGradient>
+          </defs>
+          <!-- gridlines: score 70=y31.4, 60=y60.5, 50=y89.5 -->
+          <line x1="14" y1="31.4" x2="286" y2="31.4" stroke="#EEF2F0" stroke-width="1"/>
+          <line x1="14" y1="60.5" x2="286" y2="60.5" stroke="#EEF2F0" stroke-width="1"/>
+          <line x1="14" y1="89.5" x2="286" y2="89.5" stroke="#EEF2F0" stroke-width="1"/>
+          <text x="10" y="34.5" text-anchor="end" font-size="7.5" fill="#B4C0BA" font-family="sans-serif">70</text>
+          <text x="10" y="63.5" text-anchor="end" font-size="7.5" fill="#B4C0BA" font-family="sans-serif">60</text>
+          <text x="10" y="92.5" text-anchor="end" font-size="7.5" fill="#B4C0BA" font-family="sans-serif">50</text>
+          <!-- area under curve -->
+          <path d="M 14,28.5 38.7,25.6 63.5,31.4 88.2,28.5 112.9,34.3 137.6,40.1 162.4,37.2 187.1,48.8 211.8,57.5 236.5,66.3 261.3,72.1 286,77.9 L 286,104 L 14,104 Z" fill="url(#sparkFill)"/>
+          <!-- line -->
+          <polyline points="14,28.5 38.7,25.6 63.5,31.4 88.2,28.5 112.9,34.3 137.6,40.1 162.4,37.2 187.1,48.8 211.8,57.5 236.5,66.3 261.3,72.1 286,77.9" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+          <!-- start & end dots -->
+          <circle cx="14" cy="28.5" r="3" fill="#fff" stroke="#DC2626" stroke-width="2"/>
+          <circle cx="286" cy="77.9" r="3.5" fill="#DC2626" stroke="#fff" stroke-width="1.5"/>
+          <!-- flag marker at idx8 (211.8,57.5) : 4 months before default -->
+          <line x1="211.8" y1="57.5" x2="211.8" y2="10" stroke="#D97706" stroke-width="1" stroke-dasharray="3 2"/>
+          <circle cx="211.8" cy="57.5" r="4" fill="#fff" stroke="#D97706" stroke-width="2"/>
+        </svg>
+        <div class="spark-foot">
+          <span class="flag">⚑ Flagged month 8</span>
+          <span>= <b style="color:var(--ink-2)">4 months before</b> simulated default (month 12)</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:7.5px;color:#B4C0BA;padding:0 4px;">
+          <span>Aug'25</span><span>Nov</span><span>Feb'26</span><span>May</span><span>Jul'26</span>
+        </div>
+      </div>
+
+      <!-- AA consent artefact -->
+      <div class="card codewrap">
+        <div class="code-t">
+          AA Consent Artefact
+          <span class="badge">sandbox mock · ReBIT schema</span>
+        </div>
+        <pre class="code"><span class="p">{</span>
+  <span class="k">"consentStart"</span><span class="p">:</span> <span class="s">"2026-01-04T09:12:00+05:30"</span><span class="p">,</span>
+  <span class="k">"consentExpiry"</span><span class="p">:</span> <span class="s">"2027-01-04T09:12:00+05:30"</span><span class="p">,</span>
+  <span class="k">"purpose"</span><span class="p">:</span> <span class="p">{</span> <span class="k">"code"</span><span class="p">:</span> <span class="s">"102"</span><span class="p">,</span>
+    <span class="k">"text"</span><span class="p">:</span> <span class="s">"Loan underwriting &amp; monitoring"</span> <span class="p">},</span>
+  <span class="k">"fiTypes"</span><span class="p">:</span> <span class="p">[</span> <span class="s">"DEPOSIT"</span> <span class="p">],</span>
+  <span class="k">"DataLife"</span><span class="p">:</span>  <span class="p">{</span> <span class="k">"unit"</span><span class="p">:</span> <span class="s">"MONTH"</span><span class="p">,</span> <span class="k">"value"</span><span class="p">:</span> <span class="n">12</span> <span class="p">},</span>
+  <span class="k">"Frequency"</span><span class="p">:</span> <span class="p">{</span> <span class="k">"unit"</span><span class="p">:</span> <span class="s">"MONTH"</span><span class="p">,</span> <span class="k">"value"</span><span class="p">:</span> <span class="n">1</span>  <span class="p">}</span>
+<span class="p">}</span></pre>
+        <div class="code-note"><b>Note:</b> UPI data arrives within DEPOSIT-account narrations — it is not a separate AA FI type.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== FOOTER ===================== -->
+  <div class="footer">
+    <div class="fx">
+      <span class="tick">✔</span> Built on <b>Account Aggregator + GST rails</b>
+      <span class="sep">·</span> <b>ULI/OCEN-ready</b> adapters (mocked, labeled)
+      <span class="sep">·</span> <b>RBI explainability</b>-aligned
+      <span class="sep">·</span> <b>DPDP-compliant</b>
+      <span class="sep">·</span> Onboards <b>New-to-Credit MSMEs</b>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---- Dimension rings (mini radial gauges) ----
+  // circle r=24 in a 58x58 svg, center 29,29. circumference = 2*pi*24 = 150.796
+  const DIMS = [
+    {label:"Cash Flow",       val:74, color:"#00836C"},
+    {label:"GST Compliance",  val:82, color:"#16A34A"},
+    {label:"Banking Discipline", val:61, color:"#F59E0B"},
+    {label:"Growth",          val:70, color:"#10A385"},
+    {label:"Stability",       val:58, color:"#D97706"},
+    {label:"Leverage",        val:66, color:"#00836C"},
+  ];
+  const R = 24, C = 2 * Math.PI * R; // 150.796
+  const ringsEl = document.getElementById('rings');
+  ringsEl.innerHTML = DIMS.map(d => {
+    const dash = (d.val/100) * C;
+    return `
+      <div class="ring">
+        <div class="ring-svg">
+          <svg width="58" height="58" viewBox="0 0 58 58" aria-hidden="true">
+            <circle cx="29" cy="29" r="${R}" fill="none" stroke="#EDF1EF" stroke-width="6"/>
+            <circle cx="29" cy="29" r="${R}" fill="none" stroke="${d.color}" stroke-width="6"
+              stroke-linecap="round" stroke-dasharray="${dash.toFixed(2)} ${(C-dash).toFixed(2)}"
+              transform="rotate(-90 29 29)"/>
+          </svg>
+          <div class="rc-num num">${d.val}</div>
+        </div>
+        <div class="ring-lbl">${d.label}</div>
+      </div>`;
+  }).join('');
+
+  // ---- What-if slider ----
+  const slider   = document.getElementById('balSlider');
+  const sliderVal= document.getElementById('sliderVal');
+  const outScore = document.getElementById('outScore');
+  const outElig  = document.getElementById('outElig');
+  const coachBal = document.getElementById('coachBal');
+  const coachScoreLine = document.getElementById('coachScoreLine');
+  const coachElig  = document.getElementById('coachElig');
+
+  const BASE_SCORE = 68;
+  const BASE_ELIG  = 4.2; // in Lakhs
+
+  function fmtINR(n){ return '₹' + n.toLocaleString('en-IN'); }
+
+  function update(){
+    const bal = +slider.value;
+    // model: each ₹5,000 of maintained balance ~ +2 score pts, cap +9 -> score 77
+    const gain = Math.min(9, Math.round((bal/5000) * 2));
+    const score = Math.min(77, BASE_SCORE + gain);
+    // eligibility scales with score: ~₹0.23L per point above base, rounded to 0.1L
+    const elig = Math.round((BASE_ELIG + gain * 0.235) * 10) / 10;
+
+    // slider fill percent
+    const pct = (bal / 40000) * 100;
+    slider.style.setProperty('--pct', pct + '%');
+
+    sliderVal.textContent = fmtINR(bal);
+    coachBal.textContent  = fmtINR(bal);
+
+    outScore.textContent = score;
+    outElig.textContent  = '₹' + elig.toFixed(1) + 'L';
+
+    coachScoreLine.textContent = BASE_SCORE + '→' + score;
+    coachElig.textContent = '₹' + BASE_ELIG.toFixed(1) + 'L→₹' + elig.toFixed(1) + 'L';
+  }
+  slider.addEventListener('input', update);
+  update();
+</script>
+</body>
+</html>

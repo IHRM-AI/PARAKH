@@ -1,0 +1,44 @@
+# Datasets — licenses restrict redistribution; ship download scripts only
+data/raw/
+data/processed/
+data/interim/
+*.csv
+*.parquet
+*.zip
+*.pkl
+*.joblib
+
+# Secrets & local config
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Local agent/editor config
+.claude/
+.vscode/
+.idea/
+.DS_Store
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+dist/
+build/
+*.egg-info/
+
+# Models & artifacts (tracked via releases, not git)
+artifacts/
+models/*.txt
+mlruns/
+
+# Frontend
+node_modules/
+frontend/dist/
