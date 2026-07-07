@@ -60,4 +60,9 @@ class HealthModel:
 
 
 def pd_to_score(pd_value: float | np.ndarray) -> np.ndarray:
-    return np.clip(np.round(100 * (1 - np.asarray(pd_value))), 0, 100).astype(int)
+    """Map a probability of default to a 0-100 health score.
+
+    A linear risk-to-score mapping bounded to [10, 95] so that even a very low
+    predicted PD does not read as a perfect, implausible 100.
+    """
+    return np.clip(np.round(100 - 130 * np.asarray(pd_value)), 10, 95).astype(int)
