@@ -27,9 +27,9 @@ class OcrClient:
             raise RuntimeError("OCR endpoint is not configured (set OCR_SERVICE_URL).")
         with document.open("rb") as handle:
             response = httpx.post(
-                f"{self._base}/ocr",
+                f"{self._base}/ocr/file",
                 files={"file": (document.name, handle)},
                 timeout=self._timeout,
             )
         response.raise_for_status()
-        return response.json().get("text", "")
+        return response.json().get("extracted_text", "")
