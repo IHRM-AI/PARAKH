@@ -2,13 +2,18 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from fastapi import FastAPI, HTTPException
+import tempfile
+from pathlib import Path
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from parakh.config import settings
 from parakh.consent.artefact import create_consent
 from parakh.genai.memo import LenderMemoService
+from parakh.genai.ocr import OcrClient
+from parakh.monitoring.trajectory import simulate
 from parakh.scoring.card import CardService
 
 app = FastAPI(title="PARAKH", version="0.1.0")
@@ -81,6 +86,30 @@ def score(request: ScoreRequest) -> dict[str, object]:
 @app.post("/whatif")
 def whatif(request: WhatIfRequest) -> dict[str, object]:
     return _require_service().what_if(request.features, request.adjustments)
+
+
+@app.post("/monitor")
+def monitor(request: ScoreRequest) -> dict[str, object]:
+    card = _require_service().build(request.features)
+    return asdict(simulate(card.score, request.features))
+
+
+@app.post("/ingest")
+async def ingest(file: UploadFile = File(...)) -> dict[str, object]:
+    client = OcrClient()
+    if not client.available:
+        raise HTTPException(
+            status_code=503, detail="OCR service not configured. Set OCR_SERVICE_URL."
+        )
+    suffix = Path(file.filename or "document").suffix
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as handle:
+        handle.write(await file.read())
+        path = Path(handle.name)
+    try:
+        text = client.extract(path)
+    finally:
+        path.unlink(missing_ok=True)
+    return {"filename": file.filename, "characters": len(text), "text": text}
 
 
 @app.post("/memo")
