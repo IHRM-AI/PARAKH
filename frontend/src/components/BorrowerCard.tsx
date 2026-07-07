@@ -15,10 +15,14 @@ interface Props {
 
 export function BorrowerCard({ borrower, score, consent, onConsent }: Props) {
   return (
-    <div className="panel">
-      <h2>Borrower app · परख</h2>
-      <div className="sub">
-        {borrower.name} · {borrower.location} · GSTIN {borrower.gstin}
+    <div className="phone-stage">
+      <div className="phone">
+        <div className="phone-notch" />
+        <div className="phone-screen">
+      <div className="phone-head">
+        <span className="phone-app">परख · Parakh</span>
+        <span className="phone-firm">{borrower.name} · {borrower.location}</span>
+        <span className="phone-gstin">GSTIN {borrower.gstin}</span>
       </div>
 
       <div className="consent-chip">
@@ -41,6 +45,8 @@ export function BorrowerCard({ borrower, score, consent, onConsent }: Props) {
       <ReasonList codes={score.reason_codes} />
 
       <WhatIfCoach features={borrower.features} />
+        </div>
+      </div>
     </div>
   );
 }

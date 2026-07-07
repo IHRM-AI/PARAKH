@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 interface Props {
   score: number;
   grade: string;
@@ -20,7 +22,22 @@ function arc(from: number, to: number) {
 }
 
 export function ScoreGauge({ score, grade }: Props) {
-  const valueAngle = -90 + (Math.max(0, Math.min(100, score)) / 100) * 180;
+  const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    let frame = 0;
+    let start = 0;
+    const step = (time: number) => {
+      if (start === 0) start = time;
+      const progress = Math.min(1, (time - start) / 900);
+      setShown(Math.round(score * progress));
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [score]);
+
+  const valueAngle = -90 + (Math.max(0, Math.min(100, shown)) / 100) * 180;
   const stroke = score >= 68 ? "#00836c" : score >= 45 ? "#f59e0b" : "#c1524e";
 
   return (
@@ -30,7 +47,7 @@ export function ScoreGauge({ score, grade }: Props) {
         <path d={arc(-90, valueAngle)} fill="none" stroke={stroke} strokeWidth={16} strokeLinecap="round" />
       </svg>
       <div className="gauge-score">
-        {score}
+        {shown}
         <small>/100</small>
       </div>
       <div className="pill-row">

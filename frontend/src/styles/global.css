@@ -444,3 +444,58 @@ body {
   margin-top: 0;
   padding: 11px 22px;
 }
+
+.phone-stage {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 14px 0;
+  background: radial-gradient(120% 90% at 50% 0%, #e3f0ec 0%, transparent 60%);
+  border-radius: 20px;
+}
+.phone {
+  width: 392px;
+  background: #10231d;
+  border-radius: 44px;
+  padding: 12px;
+  box-shadow: 0 24px 60px -20px rgba(0, 60, 48, 0.45), 0 2px 0 rgba(255, 255, 255, 0.4) inset;
+  position: relative;
+}
+.phone-notch {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 118px;
+  height: 26px;
+  background: #10231d;
+  border-radius: 0 0 16px 16px;
+  z-index: 2;
+}
+.phone-screen {
+  background: #ffffff;
+  border-radius: 34px;
+  padding: 34px 20px 22px;
+  max-height: 760px;
+  overflow-y: auto;
+}
+.phone-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+.phone-app {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--green-deep);
+}
+.phone-firm {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.phone-gstin {
+  font-size: 11.5px;
+  color: var(--muted);
+}
