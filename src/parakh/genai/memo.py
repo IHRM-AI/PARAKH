@@ -3,13 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from parakh.genai.llm import GemmaClient
+from parakh.genai.text import plain_text
 from parakh.scoring.card import HealthCard
 
 SYSTEM_PROMPT = (
     "You are a credit officer at an Indian bank assessing an MSME for a working "
     "capital facility. Write a short, factual sanction note from the supplied "
     "figures only. Do not invent numbers. Flag any GST-versus-bank divergence. "
-    "End with a recommendation. The officer approves before sanction."
+    "End with a recommendation. The officer approves before sanction. Write in "
+    "plain prose with simple headings and hyphen bullets; do not use Markdown "
+    "symbols such as asterisks or hashes."
 )
 
 
@@ -30,7 +33,7 @@ class LenderMemoService:
         generated_by = "deterministic template (LLM offline)"
         if self._llm.available:
             try:
-                body = self._llm.complete(SYSTEM_PROMPT, self._prompt(borrower, card))
+                body = plain_text(self._llm.complete(SYSTEM_PROMPT, self._prompt(borrower, card)))
                 generated_by = f"Gemma-4 ({self._llm.model})"
             except Exception:
                 generated_by = "deterministic template (LLM unreachable)"
