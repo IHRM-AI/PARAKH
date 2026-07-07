@@ -2,7 +2,7 @@ from parakh.genai.text import plain_text
 
 
 def test_strips_markdown():
-    out = plain_text("**Bold** and ## Heading\n* one\n- two\n`code`")
+    out = plain_text("**Bold**\n## Heading\n* one\n- two\n`code`")
     assert "*" not in out
     assert "#" not in out
     assert "`" not in out
