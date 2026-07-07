@@ -55,7 +55,7 @@ export function NewMsmeForm({ onAdd, onCancel }: Props) {
   return (
     <div className="panel add-form">
       <h2>Onboard a new MSME</h2>
-      <div className="sub">Enter the firm's consented figures to compute its Arogya score.</div>
+      <div className="sub">Enter the firm's consented figures to compute its Parakh score.</div>
       <div className="add-grid">
         <label>
           Business name
@@ -78,7 +78,7 @@ export function NewMsmeForm({ onAdd, onCancel }: Props) {
       </div>
       <div className="add-actions">
         <button className="action" onClick={submit}>
-          Compute Arogya score
+          Compute Parakh score
         </button>
         <button className="action secondary" onClick={onCancel}>
           Cancel
