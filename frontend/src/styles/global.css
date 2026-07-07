@@ -414,3 +414,33 @@ body {
   flex-direction: column;
   gap: 20px;
 }
+
+.add-form .add-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 16px;
+  margin: 12px 0 18px;
+}
+.add-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.add-form input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.add-actions {
+  display: flex;
+  gap: 12px;
+}
+.add-actions .action {
+  width: auto;
+  margin-top: 0;
+  padding: 11px 22px;
+}
