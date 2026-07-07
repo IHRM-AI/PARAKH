@@ -3,6 +3,7 @@ import type {
   Features,
   HealthResponse,
   MemoResponse,
+  MonitorResponse,
   ScoreResponse,
   WhatIfResponse,
 } from "./types";
@@ -100,5 +101,12 @@ export function draftMemo(
   return request<MemoResponse>("/memo", {
     method: "POST",
     body: JSON.stringify({ borrower, features }),
+  });
+}
+
+export function monitor(features: Features): Promise<MonitorResponse> {
+  return request<MonitorResponse>("/monitor", {
+    method: "POST",
+    body: JSON.stringify({ features }),
   });
 }

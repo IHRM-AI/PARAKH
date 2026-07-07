@@ -6,6 +6,7 @@ import { BorrowerCard } from "./components/BorrowerCard";
 import { ConsentPanel } from "./components/ConsentPanel";
 import { Header } from "./components/Header";
 import { LenderConsole } from "./components/LenderConsole";
+import { MonitoringPanel } from "./components/MonitoringPanel";
 import { BORROWERS } from "./data/borrowers";
 
 export default function App() {
@@ -62,7 +63,10 @@ export default function App() {
             consent={consent}
             onConsent={approveConsent}
           />
-          <ConsentPanel consent={consent} />
+          <div className="stack">
+            <MonitoringPanel features={selected.features} />
+            <ConsentPanel consent={consent} />
+          </div>
         </div>
       )}
 

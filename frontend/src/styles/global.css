@@ -408,3 +408,9 @@ body {
   color: var(--muted);
   text-align: center;
 }
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}

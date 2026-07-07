@@ -77,3 +77,11 @@ export interface MemoResponse {
   status: string;
   generated_by: string;
 }
+
+export interface MonitorResponse {
+  months: string[];
+  scores: number[];
+  flag_month: number | null;
+  watch_threshold: number;
+  deteriorating: boolean;
+}
