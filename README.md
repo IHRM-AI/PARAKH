@@ -92,6 +92,9 @@ Not implemented in this prototype; called out for honesty:
 - Fitted temporal / early-warning model — the monitoring trajectory is a deterministic reconstruction for the demo, not a trained forecaster. The production early-warning engine lives in the companion TRINETRA track.
 - Production drift and champion-challenger monitoring (PSI and shadow scoring).
 
+## Integration
+PARAKH scores a fixed feature vector; everything upstream is isolated behind a single `ConsentedFeedAdapter` seam (`src/parakh/adapters/`), so moving to live Account Aggregator, GST and EPFO feeds is an adapter and configuration change, not a model change. See the [integration guide](docs/integration.md) for the contract, the reference adapter, and how ULI/OCEN plugs in.
+
 ## Compliance
 Consent-native, DPDP-aligned, optional on-prem LLM. Adapters for Account Aggregator, GST, EPFO and ULI/OCEN are schema-exact so production rails swap in as configuration. External rails in the prototype are labelled as mocks or synthetic.
 
