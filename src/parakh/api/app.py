@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import logging
+import math
+import time
+import uuid
+from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager
 from dataclasses import asdict
 
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -16,7 +22,24 @@ from parakh.genai.ocr import OcrClient
 from parakh.monitoring.trajectory import simulate
 from parakh.scoring.card import CardService
 
-app = FastAPI(title="PARAKH", version="0.1.0")
+logger = logging.getLogger("parakh.api")
+
+_ARTIFACT = settings.artifacts_dir / "health_model.joblib"
+_service: CardService | None = None
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    global _service
+    if _ARTIFACT.exists():
+        _service = CardService.from_artifacts(_ARTIFACT)
+        logger.info("model artifact loaded from %s", _ARTIFACT)
+    else:
+        logger.warning("model artifact not found at %s; scoring endpoints disabled", _ARTIFACT)
+    yield
+
+
+app = FastAPI(title="PARAKH", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -24,8 +47,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_ARTIFACT = settings.artifacts_dir / "health_model.joblib"
-_service: CardService | None = None
+
+@app.middleware("http")
+async def _log_requests(request: Request, call_next):
+    request_id = uuid.uuid4().hex[:12]
+    start = time.perf_counter()
+    response = await call_next(request)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        "request id=%s method=%s path=%s status=%s duration_ms=%.1f",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+    )
+    response.headers["x-request-id"] = request_id
+    return response
+
+
+def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
+    """Optional API-key gate.
+
+    When ``API_KEY`` is unset the dependency is a no-op, so the live demo keeps
+    working without a key. When set, callers must present a matching
+    ``x-api-key`` header or receive HTTP 401.
+    """
+    expected = settings.api_key
+    if not expected:
+        return
+    if x_api_key != expected:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key.")
 
 
 class ConsentRequest(BaseModel):
@@ -49,17 +101,37 @@ class MemoRequest(BaseModel):
 _memo = LenderMemoService()
 
 
-@app.on_event("startup")
-def _load() -> None:
-    global _service
-    if _ARTIFACT.exists():
-        _service = CardService.from_artifacts(_ARTIFACT)
-
-
 def _require_service() -> CardService:
     if _service is None:
         raise HTTPException(status_code=503, detail="Model artifact not loaded. Train the model first.")
     return _service
+
+
+def _validate_features(features: Mapping[str, float], expected: list[str]) -> None:
+    """Reject unknown, missing or non-finite feature inputs with HTTP 422.
+
+    Without this guard an incomplete or malformed payload reindexes to NaN and
+    the model silently returns a NaN probability. Validating up front turns that
+    into an explicit, debuggable client error.
+    """
+    provided = set(features)
+    known = set(expected)
+    unknown = sorted(provided - known)
+    missing = sorted(known - provided)
+    non_finite = sorted(
+        name
+        for name in provided & known
+        if not math.isfinite(float(features[name]))
+    )
+    problems: list[str] = []
+    if missing:
+        problems.append(f"missing features: {missing}")
+    if unknown:
+        problems.append(f"unknown features: {unknown}")
+    if non_finite:
+        problems.append(f"non-finite values: {non_finite}")
+    if problems:
+        raise HTTPException(status_code=422, detail="; ".join(problems))
 
 
 @app.get("/health")
@@ -68,7 +140,7 @@ def health() -> dict[str, object]:
 
 
 @app.post("/consent")
-def consent(request: ConsentRequest) -> dict[str, object]:
+def consent(request: ConsentRequest, _: None = Depends(require_api_key)) -> dict[str, object]:
     try:
         return create_consent(request.purpose_code).model_dump()
     except ValueError as error:
@@ -76,26 +148,35 @@ def consent(request: ConsentRequest) -> dict[str, object]:
 
 
 @app.post("/score")
-def score(request: ScoreRequest) -> dict[str, object]:
-    card = _require_service().build(request.features)
+def score(request: ScoreRequest, _: None = Depends(require_api_key)) -> dict[str, object]:
+    service = _require_service()
+    _validate_features(request.features, service.model.feature_names)
+    card = service.build(request.features)
     payload = asdict(card)
     payload["reason_codes"] = [asdict(code) for code in card.reason_codes]
     return payload
 
 
 @app.post("/whatif")
-def whatif(request: WhatIfRequest) -> dict[str, object]:
-    return _require_service().what_if(request.features, request.adjustments)
+def whatif(request: WhatIfRequest, _: None = Depends(require_api_key)) -> dict[str, object]:
+    service = _require_service()
+    _validate_features(request.features, service.model.feature_names)
+    adjusted = {**request.features, **request.adjustments}
+    _validate_features(adjusted, service.model.feature_names)
+    return service.what_if(request.features, request.adjustments)
 
 
 @app.post("/monitor")
-def monitor(request: ScoreRequest) -> dict[str, object]:
+def monitor(request: ScoreRequest, _: None = Depends(require_api_key)) -> dict[str, object]:
     service = _require_service()
+    _validate_features(request.features, service.model.feature_names)
     return asdict(simulate(service.model, request.features))
 
 
 @app.post("/ingest")
-async def ingest(file: UploadFile = File(...)) -> dict[str, object]:
+async def ingest(
+    file: UploadFile = File(...), _: None = Depends(require_api_key)
+) -> dict[str, object]:
     client = OcrClient()
     if not client.available:
         raise HTTPException(
@@ -113,6 +194,8 @@ async def ingest(file: UploadFile = File(...)) -> dict[str, object]:
 
 
 @app.post("/memo")
-def memo(request: MemoRequest) -> dict[str, object]:
-    card = _require_service().build(request.features)
+def memo(request: MemoRequest, _: None = Depends(require_api_key)) -> dict[str, object]:
+    service = _require_service()
+    _validate_features(request.features, service.model.feature_names)
+    card = service.build(request.features)
     return asdict(_memo.draft(request.borrower, card))
