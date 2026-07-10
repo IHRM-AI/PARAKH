@@ -9,6 +9,23 @@ import shap
 from parakh.scoring.model import HealthModel
 
 
+def _row_contributions(values: object, expected_value: object) -> tuple[np.ndarray, float]:
+    """Reduce a SHAP output to one feature-contribution vector plus its base value.
+
+    Handles both the single-array return of recent shap releases and the older
+    per-class list, and the scalar or per-class expected value that pairs with it.
+    """
+    if isinstance(values, list):
+        array = np.asarray(values[-1])
+        base = expected_value[-1] if isinstance(expected_value, (list, np.ndarray)) else expected_value
+    else:
+        array = np.asarray(values)
+        base = expected_value[-1] if isinstance(expected_value, (list, np.ndarray)) else expected_value
+    if array.ndim == 3:
+        array = array[..., -1]
+    return array[0], float(base)
+
+
 @dataclass(frozen=True)
 class Phrase:
     supports_en: str
@@ -81,13 +98,15 @@ class CardExplainer:
     def __init__(self, model: HealthModel):
         if model.booster is None:
             raise RuntimeError("Model is not trained.")
+        self._model = model
         self._explainer = shap.TreeExplainer(model.booster)
 
     def explain(self, x: pd.DataFrame, top_k: int = 4) -> list[ReasonCode]:
-        values = self._explainer.shap_values(x.iloc[[0]])
-        if isinstance(values, list):
-            values = values[1]
-        contributions = values[0]
+        row = x.iloc[[0]]
+        values = self._explainer.shap_values(row)
+        contributions, base = _row_contributions(values, self._explainer.expected_value)
+        margin = float(self._model.booster.predict(row, raw_score=True)[0])
+        assert abs(base + contributions.sum() - margin) < 1e-3, "SHAP contributions must sum to the model margin"
         ranked = [
             (feature, value)
             for feature, value in sorted(

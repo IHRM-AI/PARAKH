@@ -90,8 +90,8 @@ def whatif(request: WhatIfRequest) -> dict[str, object]:
 
 @app.post("/monitor")
 def monitor(request: ScoreRequest) -> dict[str, object]:
-    card = _require_service().build(request.features)
-    return asdict(simulate(card.score, request.features))
+    service = _require_service()
+    return asdict(simulate(service.model, request.features))
 
 
 @app.post("/ingest")

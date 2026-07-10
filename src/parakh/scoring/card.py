@@ -34,6 +34,10 @@ class CardService:
         self._model = model
         self._explainer = CardExplainer(model)
 
+    @property
+    def model(self) -> HealthModel:
+        return self._model
+
     @classmethod
     def from_artifacts(cls, path: Path) -> "CardService":
         return cls(joblib.load(path))
