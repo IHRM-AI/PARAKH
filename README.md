@@ -56,6 +56,14 @@ make serve      # FastAPI on :8092
 
 Interactive API docs are at http://localhost:8092/docs.
 
+## One-command demo
+After `make train` has produced `artifacts/health_model.joblib`:
+```bash
+make demo       # builds the frontend and serves it + the API from one process on :8092
+```
+Open http://localhost:8092/. The API also serves the built single-page app from the
+same origin, so no separate frontend server or CORS setup is needed.
+
 ## Run the app (frontend)
 ```bash
 cd frontend

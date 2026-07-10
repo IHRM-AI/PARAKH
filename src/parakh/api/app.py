@@ -13,9 +13,10 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from parakh.config import settings
+from parakh.config import settings, PACKAGE_ROOT
 from parakh.consent.artefact import create_consent
 from parakh.genai.memo import LenderMemoService
 from parakh.genai.ocr import OcrClient
@@ -199,3 +200,11 @@ def memo(request: MemoRequest, _: None = Depends(require_api_key)) -> dict[str, 
     _validate_features(request.features, service.model.feature_names)
     card = service.build(request.features)
     return asdict(_memo.draft(request.borrower, card))
+
+
+_FRONTEND_DIST = PACKAGE_ROOT / "frontend" / "dist"
+if _FRONTEND_DIST.is_dir():
+    # Serve the built single-page app from the same origin as the API so a judge
+    # can run the whole demo from one process. Mounted last so API routes win;
+    # skipped entirely when the frontend has not been built (API-only deploys).
+    app.mount("/", StaticFiles(directory=_FRONTEND_DIST, html=True), name="frontend")
