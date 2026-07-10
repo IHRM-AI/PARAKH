@@ -10,7 +10,7 @@ test:
 	pytest -q
 
 serve:
-	uvicorn parakh.api.app:app --reload --port 8080
+	uvicorn parakh.api.app:app --reload --port 8092
 
 lint:
 	ruff check src tests
