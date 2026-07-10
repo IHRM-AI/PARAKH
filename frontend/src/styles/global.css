@@ -499,3 +499,138 @@ body {
   font-size: 11.5px;
   color: var(--muted);
 }
+
+.viewnav {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.viewtab {
+  border: none;
+  background: none;
+  padding: 10px 4px;
+  margin-right: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.viewtab.active {
+  color: var(--green-deep);
+  border-bottom-color: var(--green);
+}
+
+.roi {
+  margin-top: 18px;
+}
+
+.roi-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 20px;
+  margin: 18px 0 20px;
+}
+
+.roi-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.roi-inputs input[type="number"] {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.roi-inputs input[type="range"] {
+  width: 100%;
+  accent-color: var(--green);
+  margin-top: 6px;
+}
+
+.roi-slippage {
+  background: var(--green-soft);
+  border: 1px solid #cfe6df;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--green-deep);
+  margin-bottom: 16px;
+}
+
+.roi-slippage b {
+  font-size: 15px;
+}
+
+.roi-slippage span {
+  color: var(--muted);
+}
+
+.roi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.roi-table th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.roi-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.roi-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.roi-table .lift {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--green-deep);
+  font-weight: 700;
+}
+
+.roi-table td.net {
+  font-weight: 700;
+}
+
+.roi-table td.net.up {
+  color: var(--green-deep);
+}
+
+.roi-table td.net.down {
+  color: #9a6212;
+}
+
+.roi-table tfoot td {
+  border-bottom: none;
+  border-top: 2px solid var(--line);
+  font-weight: 600;
+}
+
+.roi .note code {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 11px;
+}

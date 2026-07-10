@@ -8,11 +8,15 @@ import { Header } from "./components/Header";
 import { LenderConsole } from "./components/LenderConsole";
 import { MonitoringPanel } from "./components/MonitoringPanel";
 import { NewMsmeForm } from "./components/NewMsmeForm";
+import { RoiCalculator } from "./components/RoiCalculator";
 import type { Borrower } from "./data/borrowers";
 import { BORROWERS } from "./data/borrowers";
 
+type View = "console" | "roi";
+
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [view, setView] = useState<View>("console");
   const [extra, setExtra] = useState<Borrower[]>([]);
   const [selected, setSelected] = useState<Borrower>(BORROWERS[0]);
   const [adding, setAdding] = useState(false);
@@ -50,6 +54,25 @@ export default function App() {
     <div className="app">
       <Header health={health} />
 
+      <div className="viewnav">
+        <button
+          className={`viewtab ${view === "console" ? "active" : ""}`}
+          onClick={() => setView("console")}
+        >
+          Lender console
+        </button>
+        <button
+          className={`viewtab ${view === "roi" ? "active" : ""}`}
+          onClick={() => setView("roi")}
+        >
+          Source-ablation ROI
+        </button>
+      </div>
+
+      {view === "roi" && <RoiCalculator />}
+
+      {view === "console" && (
+        <>
       <div className="tabs">
         {borrowers.map((borrower) => (
           <button
@@ -91,6 +114,8 @@ export default function App() {
               </div>
             </div>
           )}
+        </>
+      )}
         </>
       )}
 
