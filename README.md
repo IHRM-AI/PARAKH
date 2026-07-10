@@ -35,13 +35,15 @@ PARAKH (परख, "appraisal of true worth") scores a New-to-Credit MSME from a
 No public dataset joins GST, bank and EPFO records for the same firm, so the demo corpus is a disclosed synthetic engine. Absolute AUC on synthetic labels partly measures the generator, so the headline result is the **source-ablation ladder**, which shows each consented source adding genuine signal. Every model retrains on the bank's own book in the sandbox.
 
 ## Current result
-Source-ablation on the synthetic population (out-of-sample AUC, computed by `src/parakh/eval/ablation.py`):
+Source-ablation on the synthetic population (held-out test fold, out-of-sample AUC, computed by `src/parakh/eval/ablation.py`):
 
 | Consented sources | AUC |
 |---|---|
-| GST only | 0.73 |
-| + AA bank statements | 0.78 |
-| + EPFO | 0.80 |
+| GST only | 0.714 |
+| + AA bank statements | 0.736 |
+| + EPFO | 0.752 |
+
+The gradient-boosted model beats logistic regression by +0.017 AUC on the same fold, and out-of-time AUC is 0.718. See the [model card](docs/model_card.md) for intended use, calibration, limitations and fairness stance.
 
 ## Quickstart
 ```bash
