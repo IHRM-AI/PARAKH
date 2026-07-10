@@ -59,10 +59,27 @@ class HealthModel:
         return raw if self.calibrator is None else self.calibrator.predict(raw)
 
 
-def pd_to_score(pd_value: float | np.ndarray) -> np.ndarray:
-    """Map a probability of default to a 0-100 health score.
+SCORE_REFERENCE = 55
+ODDS_REFERENCE = 3.0
+PDO = 15
+SCORE_FLOOR = 10
+SCORE_CEILING = 95
 
-    A linear risk-to-score mapping bounded to [10, 95] so that even a very low
-    predicted PD does not read as a perfect, implausible 100.
+
+def pd_to_score(pd_value: float | np.ndarray) -> np.ndarray:
+    """Map a probability of default to a 0-100 health score via a points-to-double-the-odds scale.
+
+    Scores are affine in the log-odds of repayment. The scale is anchored so that
+    a score of ``SCORE_REFERENCE`` (55) corresponds to odds of ``ODDS_REFERENCE``
+    (3:1 good-to-bad, PD = 0.25, near the population default mean), and every
+    ``PDO`` (15) points added doubles those odds. This keeps the score responsive
+    across the whole realistic risk range: the previous ``100 - 130 * PD``
+    collapsed every PD at or above 0.69 to the floor, whereas the log-odds form
+    still separates firms at PD 0.1 (score 79), 0.3 (50) and 0.6 (22) before the
+    [10, 95] display clip binds.
     """
-    return np.clip(np.round(100 - 130 * np.asarray(pd_value)), 10, 95).astype(int)
+    p = np.clip(np.asarray(pd_value, dtype=float), 1e-6, 1 - 1e-6)
+    factor = PDO / np.log(2.0)
+    offset = SCORE_REFERENCE - factor * np.log(ODDS_REFERENCE)
+    score = offset + factor * np.log((1 - p) / p)
+    return np.clip(np.round(score), SCORE_FLOOR, SCORE_CEILING).astype(int)
