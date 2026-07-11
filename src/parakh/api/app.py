@@ -210,12 +210,16 @@ async def extract(
     clearly labelled canned fixture instead of failing.
     """
     filename = file.filename
-    client = OcrClient()
 
+    # Demo requests are an explicit "give me the canned firm" signal, so serve
+    # the fixture before touching OCR. This keeps the demo instant even when
+    # OCR_SERVICE_URL points at a stopped GPU that would otherwise hang.
+    if is_demo_request(filename, demo):
+        result = demo_extraction()
+        return {"filename": filename, "fields": result.fields, "source": result.source}
+
+    client = OcrClient()
     if not client.available:
-        if is_demo_request(filename, demo):
-            result = demo_extraction()
-            return {"filename": filename, "fields": result.fields, "source": result.source}
         return {
             "filename": filename,
             "fields": {},
@@ -231,9 +235,6 @@ async def extract(
         text = client.extract(path)
     except Exception:
         logger.exception("OCR extraction failed for %s", filename)
-        if is_demo_request(filename, demo):
-            result = demo_extraction()
-            return {"filename": filename, "fields": result.fields, "source": result.source}
         return {
             "filename": filename,
             "fields": {},

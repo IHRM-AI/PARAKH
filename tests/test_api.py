@@ -212,7 +212,9 @@ def test_extract_degrades_when_ocr_call_fails(client, monkeypatch):
     assert "could not be reached" in body["message"]
 
 
-def test_extract_demo_fixture_when_ocr_call_fails_on_sample(client, monkeypatch):
+def test_extract_sample_short_circuits_before_ocr(client, monkeypatch):
+    # A recognised sample serves the fixture without touching OCR, so it stays
+    # instant even when OCR_SERVICE_URL points at an unreachable GPU.
     monkeypatch.setattr(api_module.settings, "ocr_service_url", "http://ocr.internal")
     monkeypatch.setattr(api_module, "OcrClient", _FakeOcrBroken)
     response = client.post("/extract", files=_upload("gupta-sample.pdf"))
