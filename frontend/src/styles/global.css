@@ -347,6 +347,11 @@ body {
   border: 1px solid var(--green);
 }
 
+.action.monitoring {
+  background: var(--saffron);
+  color: #12232e;
+}
+
 .memo {
   margin-top: 16px;
   border: 1px solid var(--line);

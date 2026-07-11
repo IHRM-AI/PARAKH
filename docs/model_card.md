@@ -14,8 +14,9 @@ population, not a production credit model.
   health card with dimension sub-scores, vernacular reason codes and a
   pre-qualified working-capital limit.
 - Role: decision-support only. Every card is a recommendation an underwriter
-  reviews and approves; the model does not auto-sanction. The lender memo is
-  explicitly gated on officer approval.
+  reviews and approves; the model does not auto-sanction. The card's abstention
+  policy routes boundary and low-confidence cases to a credit officer rather than
+  forcing a call, and the lender memo is explicitly gated on officer approval.
 - Users: credit officers and underwriting teams at the sponsoring bank, operating
   on the bank's own book after in-sandbox retraining.
 
@@ -23,8 +24,25 @@ population, not a production credit model.
 
 - Estimator: LightGBM gradient-boosted trees (binary objective) predicting a
   12-month default probability from 13 features across three consented sources.
+- Monotone constraints: every model feature is constrained to its credit-sensible
+  direction (higher turnover, credits, cash buffer, filing punctuality and
+  headcount lower the PD; more bounces, balance dips, volatility, decline and
+  GST-vs-bank gap raise it). See `MONOTONE_DIRECTIONS` in
+  `src/parakh/scoring/model.py`. This makes the booster a glass-box scorecard: a
+  reason-code direction is now monotonically guaranteed and can never flip against
+  its documented credit meaning, which is what a model-risk reviewer needs to sign
+  off. The constraint costs a small amount of AUC (full feature set, n = 8000,
+  same split: 0.752 unconstrained versus 0.742 constrained), an expected and
+  acceptable trade for the guarantee.
 - Calibration: isotonic regression fitted on a held-out validation fold maps the
   raw booster score to a probability of default.
+- Abstention policy: the health card carries a `decision` of `auto-eligible`
+  (calibrated PD comfortably below the sanction cutoff), `refer to credit officer`
+  (a boundary band around the cutoff where score confidence is low) or `decline`
+  (clearly above). The band is expressed in calibrated PD (auto below 0.18, refer
+  0.18-0.32, decline above 0.32, cutoff 0.25) so the model defers to a human where
+  it is least reliable rather than forcing a decision. See `decide` in
+  `src/parakh/scoring/card.py`.
 - Score mapping: probability of default is mapped to a 0-100 health score with a
   points-to-double-the-odds (PDO) scale, anchored so that the reference odds
   (3:1 good-to-bad, PD = 0.25) sit at score 55 and every 15 points doubles the
@@ -49,13 +67,17 @@ headline AUC. All values below are read from `artifacts/ablation.json`.
 
 ## Performance
 
+All values below are with monotone constraints on, read from
+`artifacts/ablation.json`. Confidence intervals are 95% case bootstraps (500
+resamples).
+
 Source-ablation ladder (held-out test fold, out-of-sample AUC):
 
-| Consented sources     | AUC   |
-|-----------------------|-------|
-| GST only              | 0.714 |
-| + AA bank statements  | 0.736 |
-| + EPFO                | 0.752 |
+| Consented sources     | AUC   | 95% CI          |
+|-----------------------|-------|-----------------|
+| GST only              | 0.697 | [0.670, 0.723]  |
+| + AA bank statements  | 0.738 | [0.711, 0.764]  |
+| + EPFO                | 0.742 | [0.713, 0.769]  |
 
 Each consented source adds genuine, incremental discrimination. This ladder is
 the primary result: it holds regardless of the generator's absolute difficulty
@@ -66,26 +88,47 @@ Model-family comparison (full feature set, same fold):
 | Model               | AUC   |
 |---------------------|-------|
 | Logistic regression | 0.735 |
-| LightGBM (GBM)      | 0.752 |
+| LightGBM (GBM)      | 0.742 |
 
-The gradient-boosted model beats logistic regression by +0.017 AUC, consistent
+The gradient-boosted model beats logistic regression by +0.007 AUC, consistent
 with the thresholds and interactions built into the generator.
 
 Split-level metrics:
 
-- Random split (n = 1600, default rate 0.245): AUC 0.752, Gini 0.505, KS 0.387,
-  Brier 0.156.
-- Out-of-time split (n = 2636, default rate 0.277): AUC 0.718 versus 0.752 on the
-  random split. Later origination cohorts face a harsher macro backdrop, so the
-  out-of-time drop is expected and is the honest number to plan against.
+- Random split (n = 1600, default rate 0.245): AUC 0.742 [0.713, 0.769],
+  Gini 0.483, KS 0.381, Brier 0.158.
+- Out-of-time split (n = 2636, default rate 0.277): AUC 0.714 [0.693, 0.733]
+  versus 0.742 on the random split. Later origination cohorts face a harsher macro
+  backdrop, so the out-of-time drop is expected and is the honest number to plan
+  against.
+
+## Real-data validation
+
+To rebut the objection that the AUC is only synthetic, the same pipeline (GBM +
+monotone constraints + isotonic calibration) was run on a real loan-default
+dataset. SBA 7(a) small-business loans are the preferred anchor but were not
+fetchable on this network; the run therefore uses Home-Credit retail loans (307k
+real defaults, 60k stratified sample) as a **real-default methodology validation
+on a retail proxy, not an MSME claim**.
+
+Held-out test fold (n_test = 12,000, real default rate 8.0%): AUC
+0.735 [0.718, 0.750], KS 0.372, Brier 0.069; logistic baseline 0.732, GBM lift
++0.003. The isotonic-calibrated probabilities track the observed default rate bin
+by bin. This shows the pipeline produces a real, calibrated, out-of-sample AUC on
+genuine defaults; the synthetic layer only simulates the consented AA / GST /
+EPFO surfaces. Full detail and the calibration curve are in
+`docs/real_data_validation.md` and `artifacts/real_validation.json`.
 
 ## Calibration
 
 Isotonic regression is fitted on the validation fold, so predicted probabilities
 are monotone in the raw score and calibrated to the observed default rate on that
-fold. Brier scores are reported above (0.156 random, 0.176 out-of-time). The PDO
-mapping is a deterministic, documented transform of the calibrated probability
-and introduces no additional fitting.
+fold. Brier scores are reported above (0.158 random, 0.176 out-of-time), and a
+predicted-versus-observed reliability curve for each split is written to
+`artifacts/ablation.json` (and for the real dataset to
+`artifacts/real_validation.json`) so the deck can cite KS, Brier and calibration
+directly. The PDO mapping is a deterministic, documented transform of the
+calibrated probability and introduces no additional fitting.
 
 ## Limitations
 

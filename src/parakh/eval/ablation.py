@@ -7,6 +7,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from parakh.eval.metrics import bootstrap_auc_ci
 from parakh.scoring.model import HealthModel
 from parakh.synth.persona import BANK_FEATURES, EPFO_FEATURES, GST_FEATURES, TARGET
 
@@ -46,6 +47,31 @@ def source_ablation(df: pd.DataFrame, valid_fraction: float = 0.2, seed: int = 4
         model = HealthModel().fit(x.iloc[train_idx], y[train_idx], x.iloc[calib_idx], y[calib_idx])
         auc = roc_auc_score(y[test_idx], model.predict_pd(x.iloc[test_idx]))
         results[name] = round(float(auc), 3)
+    return results
+
+
+def source_ablation_ci(
+    df: pd.DataFrame,
+    valid_fraction: float = 0.2,
+    seed: int = 42,
+    resamples: int = 500,
+) -> dict[str, dict[str, float]]:
+    """Source-ablation ladder with a 95% bootstrap confidence interval per rung."""
+    train_idx, calib_idx, test_idx = _three_way(len(df), valid_fraction, seed)
+    y = df[TARGET].to_numpy()
+
+    results: dict[str, dict[str, float]] = {}
+    for name, columns in STAGES:
+        x = df[columns]
+        model = HealthModel().fit(x.iloc[train_idx], y[train_idx], x.iloc[calib_idx], y[calib_idx])
+        pd_test = model.predict_pd(x.iloc[test_idx])
+        auc = roc_auc_score(y[test_idx], pd_test)
+        ci_low, ci_high = bootstrap_auc_ci(y[test_idx], pd_test, resamples=resamples, seed=seed)
+        results[name] = {
+            "auc": round(float(auc), 3),
+            "ci_low": round(ci_low, 3),
+            "ci_high": round(ci_high, 3),
+        }
     return results
 
 

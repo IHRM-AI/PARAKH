@@ -19,6 +19,35 @@ PARAMS: dict[str, object] = {
     "verbosity": -1,
 }
 
+# Credit-sensible monotone direction of each feature on the probability of
+# default. +1: higher feature raises PD; -1: higher feature lowers PD. The
+# constraint makes the booster a glass-box scorecard: a reason-code direction
+# can never flip against its documented credit meaning, which is what a model-
+# risk reviewer needs to sign off. Any feature absent from this map is left
+# unconstrained (0).
+MONOTONE_DIRECTIONS: dict[str, int] = {
+    # Higher is safer -> lower PD.
+    "gst_avg_monthly_turnover": -1,
+    "gst_turnover_growth": -1,
+    "gst_filing_punctuality": -1,
+    "bank_avg_monthly_credits": -1,
+    "bank_cash_buffer_days": -1,
+    "bank_credit_debit_ratio": -1,
+    "epfo_headcount": -1,
+    "epfo_headcount_trend": -1,
+    # Higher is riskier -> higher PD.
+    "gst_turnover_volatility": 1,
+    "gst_turnover_decline_3m": 1,
+    "bank_balance_dip_count": 1,
+    "bank_bounce_count": 1,
+    "xf_gst_bank_gap": 1,
+}
+
+
+def monotone_vector(feature_names: list[str]) -> list[int]:
+    """Constraint vector aligned to ``feature_names`` for LightGBM's ``monotone_constraints``."""
+    return [MONOTONE_DIRECTIONS.get(name, 0) for name in feature_names]
+
 
 @dataclass
 class HealthModel:
@@ -36,10 +65,11 @@ class HealthModel:
         y_valid: np.ndarray,
     ) -> "HealthModel":
         self.feature_names = list(x_train.columns)
+        params = {**PARAMS, "monotone_constraints": monotone_vector(self.feature_names)}
         train_set = lgb.Dataset(x_train, label=y_train)
         valid_set = lgb.Dataset(x_valid, label=y_valid, reference=train_set)
         self.booster = lgb.train(
-            PARAMS,
+            params,
             train_set,
             num_boost_round=self.num_boost_round,
             valid_sets=[valid_set],

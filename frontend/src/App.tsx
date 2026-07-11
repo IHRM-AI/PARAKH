@@ -14,11 +14,17 @@ import { BORROWERS } from "./data/borrowers";
 
 type View = "console" | "roi";
 
+function initialBorrower(): Borrower {
+  if (typeof window === "undefined") return BORROWERS[0];
+  const focus = new URLSearchParams(window.location.search).get("focus");
+  return BORROWERS.find((borrower) => borrower.id === focus) ?? BORROWERS[0];
+}
+
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [view, setView] = useState<View>("console");
   const [extra, setExtra] = useState<Borrower[]>([]);
-  const [selected, setSelected] = useState<Borrower>(BORROWERS[0]);
+  const [selected, setSelected] = useState<Borrower>(initialBorrower);
   const [adding, setAdding] = useState(false);
   const [card, setCard] = useState<ScoreResponse | null>(null);
   const [consent, setConsent] = useState<ConsentResponse | null>(null);

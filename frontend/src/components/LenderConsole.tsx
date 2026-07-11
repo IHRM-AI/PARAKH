@@ -4,6 +4,7 @@ import { draftMemo } from "../api/client";
 import type { Borrower } from "../data/borrowers";
 import type { MemoResponse, ScoreResponse } from "../api/types";
 import { inr, percent } from "../format";
+import { monitoringUrl } from "../handoff";
 
 interface Props {
   borrower: Borrower;
@@ -22,6 +23,11 @@ export function LenderConsole({ borrower, score }: Props) {
       .then(setMemo)
       .catch(() => setMemo(null))
       .finally(() => setDrafting(false));
+  };
+
+  const monitorHref = monitoringUrl(borrower.id);
+  const sendToMonitoring = () => {
+    if (monitorHref) window.location.href = monitorHref;
   };
 
   return (
@@ -76,6 +82,12 @@ export function LenderConsole({ borrower, score }: Props) {
             {approved ? "Approved by officer" : "Approve (human-in-loop)"}
           </button>
         </div>
+      )}
+
+      {approved && monitorHref && (
+        <button className="action monitoring" onClick={sendToMonitoring}>
+          Send to monitoring →
+        </button>
       )}
     </div>
   );
