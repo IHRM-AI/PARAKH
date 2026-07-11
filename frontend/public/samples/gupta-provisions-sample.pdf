@@ -1,0 +1,77 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 696 >>
+stream
+BT
+/F1 12 Tf
+60 760 Td
+14 TL
+(MSME Consented Financial Summary) Tj
+T*
+() Tj
+T*
+(Business name: Gupta Provisions) Tj
+T*
+(Location: Kanpur, UP) Tj
+T*
+(GSTIN 09ABCDE1234F1Z5) Tj
+T*
+() Tj
+T*
+(GST turnover per month: Rs 6,20,000) Tj
+T*
+(Turnover growth: 0.09) Tj
+T*
+(Turnover volatility: 0.16) Tj
+T*
+(GST filings on time: 11) Tj
+T*
+(3-month decline: 0) Tj
+T*
+(Bank credits per month: Rs 5,74,000) Tj
+T*
+(Month-end balance dips: 2) Tj
+T*
+(Cheque bounces: 0) Tj
+T*
+(Cash buffer days: 26) Tj
+T*
+(Credit/debit ratio: 1.08) Tj
+T*
+(GST-vs-bank gap: 0.07) Tj
+T*
+(EPFO headcount: 7) Tj
+T*
+(Headcount trend: 0.04) Tj
+T*
+() Tj
+T*
+(Prepared from Account Aggregator and GST rails. Figures are illustrative.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000988 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1058
+%%EOF

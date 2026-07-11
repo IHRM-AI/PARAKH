@@ -11,11 +11,12 @@ from dataclasses import asdict
 import tempfile
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from parakh.api.extraction import demo_extraction, is_demo_request, parse_document_text
 from parakh.config import settings, PACKAGE_ROOT
 from parakh.consent.artefact import create_consent
 from parakh.genai.memo import LenderMemoService
@@ -192,6 +193,57 @@ async def ingest(
     finally:
         path.unlink(missing_ok=True)
     return {"filename": file.filename, "characters": len(text), "text": text}
+
+
+@app.post("/extract")
+async def extract(
+    file: UploadFile = File(...),
+    demo: bool = Query(default=False),
+    _: None = Depends(require_api_key),
+) -> dict[str, object]:
+    """Auto-fill the onboarding form from an uploaded document.
+
+    Runs OCR to get the raw text, then parses it into the NewMsmeForm fields and
+    returns only the values it is confident about, for the officer to review
+    before computing the score. Degrades gracefully: when the OCR service is
+    unset or unreachable, a recognised sample filename or ``demo=true`` returns a
+    clearly labelled canned fixture instead of failing.
+    """
+    filename = file.filename
+    client = OcrClient()
+
+    if not client.available:
+        if is_demo_request(filename, demo):
+            result = demo_extraction()
+            return {"filename": filename, "fields": result.fields, "source": result.source}
+        return {
+            "filename": filename,
+            "fields": {},
+            "source": "unavailable",
+            "message": "OCR service is offline. Set OCR_SERVICE_URL, or upload a sample document to preview the auto-fill.",
+        }
+
+    suffix = Path(filename or "document").suffix
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as handle:
+        handle.write(await file.read())
+        path = Path(handle.name)
+    try:
+        text = client.extract(path)
+    except Exception:
+        logger.exception("OCR extraction failed for %s", filename)
+        if is_demo_request(filename, demo):
+            result = demo_extraction()
+            return {"filename": filename, "fields": result.fields, "source": result.source}
+        return {
+            "filename": filename,
+            "fields": {},
+            "source": "unavailable",
+            "message": "OCR service could not be reached. Upload a sample document to preview the auto-fill.",
+        }
+    finally:
+        path.unlink(missing_ok=True)
+
+    return {"filename": filename, "fields": parse_document_text(text), "source": "ocr"}
 
 
 @app.post("/memo")

@@ -139,3 +139,82 @@ def test_api_key_gate_rejects_when_set(client, valid_features, monkeypatch):
         "/score", json={"features": valid_features}, headers={"x-api-key": "s3cret"}
     )
     assert authed.status_code == 200
+
+
+def _upload(name: str) -> dict[str, tuple[str, bytes, str]]:
+    return {"file": (name, b"dummy bytes", "application/pdf")}
+
+
+class _FakeOcrAvailable:
+    def __init__(self, *_args, **_kwargs) -> None:
+        self.available = True
+
+    def extract(self, _path) -> str:
+        return (
+            "Business name: Test Traders\nLocation: Pune, MH\n"
+            "GSTIN 09ABCDE1234F1Z5\nGST turnover per month: 500000\n"
+        )
+
+
+class _FakeOcrBroken:
+    def __init__(self, *_args, **_kwargs) -> None:
+        self.available = True
+
+    def extract(self, _path) -> str:
+        raise RuntimeError("OCR service unreachable")
+
+
+def test_extract_demo_fixture_when_ocr_offline(client, monkeypatch):
+    monkeypatch.setattr(api_module.settings, "ocr_service_url", "")
+    response = client.post("/extract", files=_upload("gst-sample.pdf"))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "demo fixture — OCR offline"
+    assert body["fields"]["name"] == "Gupta Provisions"
+
+
+def test_extract_demo_via_query_flag(client, monkeypatch):
+    monkeypatch.setattr(api_module.settings, "ocr_service_url", "")
+    response = client.post("/extract?demo=true", files=_upload("anything.pdf"))
+    assert response.status_code == 200
+    assert response.json()["source"] == "demo fixture — OCR offline"
+
+
+def test_extract_reports_offline_for_unknown_file(client, monkeypatch):
+    monkeypatch.setattr(api_module.settings, "ocr_service_url", "")
+    response = client.post("/extract", files=_upload("statement.pdf"))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "unavailable"
+    assert body["fields"] == {}
+    assert "offline" in body["message"]
+
+
+def test_extract_parses_ocr_text(client, monkeypatch):
+    monkeypatch.setattr(api_module.settings, "ocr_service_url", "http://ocr.internal")
+    monkeypatch.setattr(api_module, "OcrClient", _FakeOcrAvailable)
+    response = client.post("/extract", files=_upload("real-return.pdf"))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "ocr"
+    assert body["fields"]["name"] == "Test Traders"
+    assert body["fields"]["gstin"] == "09ABCDE1234F1Z5"
+    assert body["fields"]["gst_avg_monthly_turnover"] == 500000
+
+
+def test_extract_degrades_when_ocr_call_fails(client, monkeypatch):
+    monkeypatch.setattr(api_module.settings, "ocr_service_url", "http://ocr.internal")
+    monkeypatch.setattr(api_module, "OcrClient", _FakeOcrBroken)
+    response = client.post("/extract", files=_upload("real-return.pdf"))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "unavailable"
+    assert "could not be reached" in body["message"]
+
+
+def test_extract_demo_fixture_when_ocr_call_fails_on_sample(client, monkeypatch):
+    monkeypatch.setattr(api_module.settings, "ocr_service_url", "http://ocr.internal")
+    monkeypatch.setattr(api_module, "OcrClient", _FakeOcrBroken)
+    response = client.post("/extract", files=_upload("gupta-sample.pdf"))
+    assert response.status_code == 200
+    assert response.json()["source"] == "demo fixture — OCR offline"
