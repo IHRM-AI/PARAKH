@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-import type { Features } from "../api/types";
+import { ApiError, extractDocument } from "../api/client";
+import type { ExtractResponse, Features } from "../api/types";
 import type { Borrower } from "../data/borrowers";
 
 interface Props {
@@ -31,14 +32,92 @@ const FIELDS: Field[] = [
   { key: "epfo_headcount_trend", label: "Headcount trend", value: 0.03, step: 0.01 },
 ];
 
+const SAMPLE_PATH = `${import.meta.env.BASE_URL}samples/gupta-provisions-sample.pdf`;
+
+type Status = { tone: "info" | "warn" | "error"; text: string } | null;
+
 export function NewMsmeForm({ onAdd, onCancel }: Props) {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [gstin, setGstin] = useState("");
   const [fields, setFields] = useState<Field[]>(FIELDS);
+  const [status, setStatus] = useState<Status>(null);
+  const [busy, setBusy] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const update = (key: keyof Features, raw: string) =>
     setFields((prev) => prev.map((f) => (f.key === key ? { ...f, value: Number(raw) } : f)));
+
+  const applyExtraction = (result: ExtractResponse) => {
+    const found = result.fields;
+    if (typeof found.name === "string") setName(found.name);
+    if (typeof found.location === "string") setLocation(found.location);
+    if (typeof found.gstin === "string") setGstin(found.gstin);
+    setFields((prev) =>
+      prev.map((f) => {
+        const value = found[f.key];
+        return typeof value === "number" ? { ...f, value } : f;
+      }),
+    );
+
+    if (result.source === "unavailable") {
+      setStatus({
+        tone: "warn",
+        text: result.message ?? "OCR service is offline. Try the sample document.",
+      });
+      return;
+    }
+    const count = Object.keys(found).length;
+    if (result.source === "ocr") {
+      setStatus({
+        tone: "info",
+        text: `Extracted ${count} field${count === 1 ? "" : "s"} from the document — review before computing.`,
+      });
+    } else {
+      setStatus({
+        tone: "warn",
+        text: "OCR offline — loaded a sample firm. Best-effort figures, review before computing.",
+      });
+    }
+  };
+
+  const runExtraction = async (file: File, demo: boolean) => {
+    setBusy(true);
+    setStatus({ tone: "info", text: `Reading ${file.name}…` });
+    try {
+      applyExtraction(await extractDocument(file, demo));
+    } catch (cause) {
+      const message =
+        cause instanceof ApiError ? cause.message : "Could not reach the extraction service.";
+      setStatus({ tone: "error", text: message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onFilePicked = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) void runExtraction(file, false);
+  };
+
+  const useSampleDocument = async () => {
+    setBusy(true);
+    setStatus({ tone: "info", text: "Loading a sample document…" });
+    try {
+      const response = await fetch(SAMPLE_PATH);
+      if (!response.ok) throw new Error("Sample document not found");
+      const blob = await response.blob();
+      const file = new File([blob], "gupta-provisions-sample.pdf", { type: "application/pdf" });
+      await runExtraction(file, true);
+    } catch {
+      setStatus({
+        tone: "error",
+        text: "Could not load the sample document.",
+      });
+      setBusy(false);
+    }
+  };
 
   const submit = () => {
     const features = Object.fromEntries(fields.map((f) => [f.key, f.value])) as Features;
@@ -56,6 +135,33 @@ export function NewMsmeForm({ onAdd, onCancel }: Props) {
     <div className="panel add-form">
       <h2>Onboard a new MSME</h2>
       <div className="sub">Enter the firm's consented figures to compute its Parakh score.</div>
+
+      <div className="upload-row">
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/pdf,image/*"
+          className="upload-input"
+          onChange={onFilePicked}
+        />
+        <button
+          type="button"
+          className="action secondary upload-btn"
+          disabled={busy}
+          onClick={() => fileInput.current?.click()}
+        >
+          Upload document (PDF)
+        </button>
+        <button type="button" className="linklike" disabled={busy} onClick={useSampleDocument}>
+          Use a sample document
+        </button>
+      </div>
+      <div className="upload-note">
+        Best-effort auto-fill from the uploaded document. The officer reviews every field before
+        computing the score.
+      </div>
+      {status && <div className={`upload-status ${status.tone}`}>{status.text}</div>}
+
       <div className="add-grid">
         <label>
           Business name

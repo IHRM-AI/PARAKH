@@ -85,3 +85,12 @@ export interface MonitorResponse {
   watch_threshold: number;
   deteriorating: boolean;
 }
+
+export type ExtractionSource = "ocr" | "demo fixture — OCR offline" | "unavailable";
+
+export interface ExtractResponse {
+  filename: string | null;
+  fields: Partial<Record<FeatureKey | "name" | "location" | "gstin", number | string>>;
+  source: ExtractionSource;
+  message?: string;
+}

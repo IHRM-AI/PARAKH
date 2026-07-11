@@ -1,5 +1,6 @@
 import type {
   ConsentResponse,
+  ExtractResponse,
   Features,
   HealthResponse,
   MemoResponse,
@@ -109,4 +110,27 @@ export function monitor(features: Features): Promise<MonitorResponse> {
     method: "POST",
     body: JSON.stringify({ features }),
   });
+}
+
+export async function extractDocument(
+  file: File,
+  demo = false,
+): Promise<ExtractResponse> {
+  const body = new FormData();
+  body.append("file", file, file.name);
+  const path = demo ? "/extract?demo=true" : "/extract";
+  let response: Response;
+  try {
+    // No explicit Content-Type: the browser sets the multipart boundary.
+    response = await fetch(`${BASE}${path}`, { method: "POST", body });
+  } catch (cause) {
+    throw new ApiError(
+      cause instanceof Error ? cause.message : "Network request failed",
+      0,
+    );
+  }
+  if (!response.ok) {
+    throw new ApiError(await readError(response), response.status);
+  }
+  return response.json() as Promise<ExtractResponse>;
 }

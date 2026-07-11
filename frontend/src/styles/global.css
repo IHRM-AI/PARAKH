@@ -435,6 +435,59 @@ body {
   font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 14px 0 6px;
+}
+.upload-input {
+  display: none;
+}
+.upload-btn {
+  width: auto;
+  margin-top: 0;
+  padding: 9px 18px;
+}
+.linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--green-deep, #005c4c);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.linklike:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.upload-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.upload-status {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 6px 0 4px;
+  border: 1px solid var(--line);
+}
+.upload-status.info {
+  color: var(--green-deep, #005c4c);
+  background: rgba(0, 92, 76, 0.06);
+}
+.upload-status.warn {
+  color: #8a5a00;
+  background: rgba(180, 120, 0, 0.08);
+}
+.upload-status.error {
+  color: var(--danger);
+  background: rgba(180, 0, 0, 0.06);
+}
+
 .add-actions {
   display: flex;
   gap: 12px;
