@@ -6,8 +6,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from parakh.api import app as api_module
+from parakh.identity import canonical_borrower_id
 from parakh.monitoring.trajectory import HORIZON
 from parakh.scoring.card import CardService
+
+SHARMA_GSTIN = "23ABCDE1234F1Z5"
+SHARMA_CANONICAL_ID = canonical_borrower_id({"gstin": SHARMA_GSTIN})
 
 
 @pytest.fixture
@@ -15,6 +19,16 @@ def client(trained_model, monkeypatch) -> TestClient:
     service = CardService(trained_model)
     monkeypatch.setattr(api_module, "_service", service)
     return TestClient(api_module.app)
+
+
+@pytest.fixture
+def lifespan_client(trained_model, monkeypatch) -> TestClient:
+    # Enter the app via the context manager so the lifespan seeds the audit
+    # ledger, which the /audit endpoints read.
+    service = CardService(trained_model)
+    monkeypatch.setattr(api_module, "_service", service)
+    with TestClient(api_module.app) as test_client:
+        yield test_client
 
 
 def test_health_reports_model_loaded(client):
@@ -220,3 +234,57 @@ def test_extract_sample_short_circuits_before_ocr(client, monkeypatch):
     response = client.post("/extract", files=_upload("gupta-sample.pdf"))
     assert response.status_code == 200
     assert response.json()["source"] == "demo fixture — OCR offline"
+
+
+def test_resolve_returns_canonical_id_and_presence(client):
+    response = client.get("/resolve", params={"gstin": SHARMA_GSTIN, "name": "Sharma Kirana Store"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["canonical_id"] == SHARMA_CANONICAL_ID
+    assert body["gstin"] == SHARMA_GSTIN
+    assert body["display_name"] == "Sharma Kirana Store"
+    assert body["originated"] is True
+    assert body["monitored"] is True
+
+
+def test_resolve_normalises_gstin(client):
+    response = client.get("/resolve", params={"gstin": " 23abcde1234f1z5 "})
+    assert response.status_code == 200
+    assert response.json()["canonical_id"] == SHARMA_CANONICAL_ID
+
+
+def test_resolve_unknown_borrower_is_not_monitored(client):
+    response = client.get("/resolve", params={"gstin": "29ZZZZZ9999Z9Z9"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["originated"] is False
+    assert body["monitored"] is False
+
+
+def test_audit_chain_is_ordered_and_verifies(lifespan_client):
+    chain = lifespan_client.get(f"/audit/{SHARMA_CANONICAL_ID}")
+    assert chain.status_code == 200
+    entries = chain.json()["entries"]
+    assert [entry["event_type"] for entry in entries] == [
+        "CONSENT_GRANTED",
+        "DATA_FETCHED",
+        "SCORED",
+        "DECISION",
+        "MONITORING_WATCH",
+    ]
+    verified = lifespan_client.get(f"/audit/{SHARMA_CANONICAL_ID}/verify")
+    assert verified.status_code == 200
+    body = verified.json()
+    assert body["ok"] is True
+    assert body["first_broken_seq"] is None
+
+
+def test_audit_unknown_borrower_returns_404(lifespan_client):
+    assert lifespan_client.get("/audit/brw_unknown").status_code == 404
+    assert lifespan_client.get("/audit/brw_unknown/verify").status_code == 404
+
+
+def test_audit_returns_503_when_ledger_uninitialised(client, monkeypatch):
+    monkeypatch.setattr(api_module, "_ledger", None)
+    assert client.get(f"/audit/{SHARMA_CANONICAL_ID}").status_code == 503
+    assert client.get(f"/audit/{SHARMA_CANONICAL_ID}/verify").status_code == 503

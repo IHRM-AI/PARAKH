@@ -25,7 +25,7 @@ export function LenderConsole({ borrower, score }: Props) {
       .finally(() => setDrafting(false));
   };
 
-  const monitorHref = monitoringUrl(borrower.id);
+  const monitorHref = monitoringUrl(borrower);
   const sendToMonitoring = () => {
     if (monitorHref) window.location.href = monitorHref;
   };

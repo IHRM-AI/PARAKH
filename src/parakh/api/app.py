@@ -7,6 +7,7 @@ import uuid
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from datetime import datetime, timedelta, timezone
 
 import tempfile
 from pathlib import Path
@@ -17,10 +18,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from parakh.api.extraction import demo_extraction, is_demo_request, parse_document_text
+from parakh.audit.ledger import AuditLedger, verify as verify_chain
 from parakh.config import settings, PACKAGE_ROOT
 from parakh.consent.artefact import create_consent
 from parakh.genai.memo import LenderMemoService
 from parakh.genai.ocr import OcrClient
+from parakh.identity import canonical_borrower_id, resolve
 from parakh.monitoring.trajectory import simulate
 from parakh.scoring.card import CardService
 
@@ -28,16 +31,44 @@ logger = logging.getLogger("parakh.api")
 
 _ARTIFACT = settings.artifacts_dir / "health_model.joblib"
 _service: CardService | None = None
+_ledger: AuditLedger | None = None
+
+# Seeded lifecycle personas for the audit demo. Each borrower gets one ordered
+# consent-to-cash chain (see audit.ledger.LIFECYCLE_EVENTS) so /audit returns a
+# real verified chain without a public write path. The timestamps are fixed so
+# the entry hashes are deterministic.
+_AUDIT_SEED = [
+    {"gstin": "23ABCDE1234F1Z5", "purpose_code": "104", "decision": "sanction"},
+]
+
+
+def _build_seed_ledger() -> AuditLedger:
+    ledger = AuditLedger(entries=[])
+    for index, seed in enumerate(_AUDIT_SEED):
+        canonical_id = canonical_borrower_id({"gstin": seed["gstin"]})
+        consent = create_consent(
+            seed["purpose_code"],
+            issued_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+        base = datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(days=index)
+        ledger.record_lifecycle(
+            canonical_id,
+            consent=consent,
+            decision=seed["decision"],
+            ts=base.isoformat(timespec="seconds"),
+        )
+    return ledger
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    global _service
+    global _service, _ledger
     if _ARTIFACT.exists():
         _service = CardService.from_artifacts(_ARTIFACT)
         logger.info("model artifact loaded from %s", _ARTIFACT)
     else:
         logger.warning("model artifact not found at %s; scoring endpoints disabled", _ARTIFACT)
+    _ledger = _build_seed_ledger()
     yield
 
 
@@ -147,6 +178,56 @@ def consent(request: ConsentRequest, _: None = Depends(require_api_key)) -> dict
         return create_consent(request.purpose_code).model_dump()
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error))
+
+
+# Demo presence registry for the shared borrower graph. In production these
+# flags would query the origination and monitoring stores by canonical id; here
+# they encode the seeded lifecycle personas so /resolve reports the same graph
+# the live demo walks through.
+_ORIGINATED_GSTINS = {"23ABCDE1234F1Z5", "27FGHIJ5678K2Z9", "09KLMNO9012P3Z1"}
+_MONITORED_GSTINS = {"23ABCDE1234F1Z5"}
+
+
+@app.get("/resolve")
+def resolve_borrower(
+    gstin: str = Query(...),
+    pan: str | None = Query(default=None),
+    name: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+    _: None = Depends(require_api_key),
+) -> dict[str, object]:
+    ref = resolve({"gstin": gstin, "pan": pan, "name": name, "state": state})
+    key = (ref.gstin or "").upper()
+    return {
+        "canonical_id": ref.canonical_id,
+        "gstin": ref.gstin,
+        "display_name": ref.display_name,
+        "originated": key in _ORIGINATED_GSTINS,
+        "monitored": key in _MONITORED_GSTINS,
+    }
+
+
+def _require_ledger() -> AuditLedger:
+    if _ledger is None:
+        raise HTTPException(status_code=503, detail="Audit ledger not initialised.")
+    return _ledger
+
+
+@app.get("/audit/{canonical_id}")
+def audit_chain(canonical_id: str, _: None = Depends(require_api_key)) -> dict[str, object]:
+    chain = _require_ledger().chain_for(canonical_id)
+    if not chain:
+        raise HTTPException(status_code=404, detail=f"No audit chain for {canonical_id!r}.")
+    return {"canonical_id": canonical_id, "entries": [asdict(entry) for entry in chain]}
+
+
+@app.get("/audit/{canonical_id}/verify")
+def audit_verify(canonical_id: str, _: None = Depends(require_api_key)) -> dict[str, object]:
+    chain = _require_ledger().chain_for(canonical_id)
+    if not chain:
+        raise HTTPException(status_code=404, detail=f"No audit chain for {canonical_id!r}.")
+    ok, first_broken_seq = verify_chain(chain)
+    return {"canonical_id": canonical_id, "ok": ok, "first_broken_seq": first_broken_seq}
 
 
 @app.post("/score")

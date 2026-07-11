@@ -10,6 +10,7 @@ import pandas as pd
 from parakh.config import settings
 from parakh.eval.ablation import model_comparison, source_ablation, source_ablation_ci
 from parakh.eval.metrics import ScoreReport, bootstrap_auc_ci, evaluate, reliability_curve
+from parakh.pipelines import rigor
 from parakh.scoring.model import HealthModel
 from parakh.synth.persona import (
     BANK_FEATURES,
@@ -115,6 +116,8 @@ def run(n: int = 8000) -> dict[str, object]:
         "monotone_constraints": True,
     }
     (settings.artifacts_dir / "ablation.json").write_text(json.dumps(artifact, indent=2))
+
+    rigor.run()
     return artifact
 
 

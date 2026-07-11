@@ -90,8 +90,98 @@ Model-family comparison (full feature set, same fold):
 | Logistic regression | 0.735 |
 | LightGBM (GBM)      | 0.742 |
 
-The gradient-boosted model beats logistic regression by +0.007 AUC, consistent
-with the thresholds and interactions built into the generator.
+The gradient-boosted model leads logistic regression by +0.007 AUC, but see the
+DeLong significance subsection below: on this fold that lift is not statistically
+distinguishable from zero.
+
+### DeLong significance
+
+The GBM-minus-logistic AUC delta is tested with DeLong's method for two
+correlated ROC AUCs on the identical test fold (`src/parakh/eval/delong.py`),
+which returns the delta, a 95% confidence interval and a two-sided p-value.
+
+- Synthetic (+EPFO full feature set): delta +0.007, 95% CI **[-0.015, 0.029]**,
+  p = 0.56. **The CI includes 0**, so the GBM edge over a plain logistic model is
+  not statistically distinguishable on this fold.
+- Real (Home-Credit validation): delta +0.003, 95% CI **[-0.006, 0.013]**,
+  p = 0.50. **The CI includes 0** here too.
+
+Honest reading: PARAKH does not claim a black-box discrimination edge over
+logistic regression. The deployed value of the GBM is the **calibrated,
+monotone-constrained score** — glass-box reason-code directions, isotonic
+calibration and abstention — not an AUC advantage. The boosted family is retained
+because it enforces monotone credit directions natively and calibrates cleanly,
+not because it out-discriminates a linear model by a margin these datasets can
+resolve. Values are in `artifacts/ablation.json` (`model_comparison`) and
+`artifacts/real_validation.json` (`delong_*`).
+
+### Reject inference
+
+To make the cash-flow-scoring inclusion thesis concrete, the synthetic generator
+is extended to a through-the-door population (`generate_through_the_door` in
+`src/parakh/synth/persona.py`) that adds thin-file New-to-Credit applicants a
+bureau-or-collateral lender cannot score. A known-good-bad model is trained on the
+booked (with-bureau) subset; rejects are folded back in by **fuzzy augmentation
+(parcelling)** — each reject enters twice, weighted by its inferred PD as a bad
+and 1 - PD as a good — and an all-good-bad model is retrained
+(`src/parakh/pipelines/reject_inference.py`). Both lenders apply the same
+calibrated-PD sanction cutoff; only PARAKH can reach thin-file firms.
+
+- Bureau approval rate: 29.5%. PARAKH approval rate: 55.2%. **Incremental
+  approvals: +25.8pp.**
+- Incremental cohort (PARAKH-approved but bureau-rejected, n = 637) realised
+  default rate: **11.6%**, versus 9.6% for the bureau-booked cohort.
+
+The incremental cohort defaults slightly higher than bureau-booked firms, as
+expected for riskier NTC applicants, but well below the population rate and at a
+level a lender can price. **These figures are on synthetic data and demonstrate
+the mechanism only; they are not a real-world performance claim.** Values are in
+`artifacts/reject_inference.json`.
+
+### Population stability
+
+The Population Stability Index of the 0-100 score distribution is computed for
+every origination cohort against the earliest cohort as baseline (standard
+10-bucket PSI, `src/parakh/eval/stability.py`).
+
+- Baseline cohort: 0. **Max PSI: 0.223** (cohort 17). Share of cohorts within the
+  0.10 target: **0.65** (11 of 17); cohorts 12-17 exceed 0.10.
+
+Reported as measured: later cohorts drift materially. This is **by construction** —
+the generator deliberately hands later origination cohorts a harsher macro
+backdrop, so the score distribution shifts and PSI rises with cohort age. It is
+the honest signal that a deployed model would need scheduled re-fitting as the
+book ages, not a stability claim. Values are in `artifacts/stability.json`.
+
+### Fairness slicing
+
+On the held-out synthetic test fold, AUC, approval rate and observed default rate
+are sliced by sector (7), state (8) and three headcount-size bands
+(`src/parakh/eval/fairness.py`), with a disparate-impact ratio (min approval rate
+over max, per dimension; the four-fifths rule flags below 0.80).
+
+| Dimension       | DI ratio | Weakest-AUC slice          |
+|-----------------|----------|----------------------------|
+| Sector          | 0.90     | Food processing, AUC 0.69  |
+| State           | 0.75     | MH, AUC 0.69               |
+| Headcount band  | 0.38     | mid (25+), AUC 0.64 (n=17) |
+
+Reported honestly:
+
+- **Headcount** shows the largest approval gap (DI 0.38): micro firms (1-9)
+  approve at 35% versus 69% for small (10-24). This tracks realised risk — micro
+  firms default at 30.9% versus 19.2% for small — because headcount is a
+  monotone-constrained safer feature, so the gap reflects the risk gradient the
+  model correctly reads, not a protected-attribute effect. The mid (25+) slice has
+  only n = 17, so its 0.64 AUC is statistically thin and should not be
+  over-read.
+- **State** DI is 0.75 (below the 0.80 four-fifths line) and **sector** DI is 0.90
+  (above it). No slice loses material discrimination beyond the small-n mid band;
+  per-slice AUCs range 0.69-0.79.
+
+None of these dimensions is a model input (state and sector exist only in the
+generator for realism), so the disparities are downstream of the financial-
+behaviour features. Values are in `artifacts/fairness.json`.
 
 Split-level metrics:
 
@@ -113,9 +203,10 @@ on a retail proxy, not an MSME claim**.
 
 Held-out test fold (n_test = 12,000, real default rate 8.0%): AUC
 0.735 [0.718, 0.750], KS 0.372, Brier 0.069; logistic baseline 0.732, GBM lift
-+0.003. The isotonic-calibrated probabilities track the observed default rate bin
-by bin. This shows the pipeline produces a real, calibrated, out-of-sample AUC on
-genuine defaults; the synthetic layer only simulates the consented AA / GST /
++0.003 (DeLong 95% CI [-0.006, 0.013], p = 0.50 — not significant, see the DeLong
+subsection). The isotonic-calibrated probabilities track the observed default rate
+bin by bin. This shows the pipeline produces a real, calibrated, out-of-sample AUC
+on genuine defaults; the synthetic layer only simulates the consented AA / GST /
 EPFO surfaces. Full detail and the calibration curve are in
 `docs/real_data_validation.md` and `artifacts/real_validation.json`.
 
@@ -152,9 +243,10 @@ punctuality, cash buffer, bounces, headcount trend, GST-vs-bank gap). It ingests
 no protected attributes such as caste, religion, gender or region as a
 score driver (state and sector exist in the generator for realism but are not
 model inputs). Reason codes are surfaced in Hindi and English so borrowers can
-understand and contest their score. Formal disparate-impact testing on protected
-groups is out of scope for the synthetic prototype and is a prerequisite before
-any production deployment.
+understand and contest their score. The Fairness slicing subsection above reports
+sliced AUC, approval rate and disparate-impact ratios across sector, state and
+headcount bands on the synthetic fold; formal disparate-impact testing on real
+protected groups remains a prerequisite before any production deployment.
 
 ## Out-of-scope uses
 

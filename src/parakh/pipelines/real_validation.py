@@ -13,6 +13,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from parakh.config import settings
+from parakh.eval.delong import delong_auc_delta
 from parakh.eval.metrics import bootstrap_auc_ci, evaluate, reliability_curve
 from parakh.scoring.model import HealthModel
 
@@ -34,6 +35,53 @@ class RealDataset:
 def _clean_currency(series: pd.Series) -> pd.Series:
     text = series.astype(str).str.replace(r"[$,]", "", regex=True).str.strip()
     return pd.to_numeric(text, errors="coerce")
+
+
+def _stratified_sample(raw: pd.DataFrame, target: np.ndarray, sample_rows: int, seed: int) -> tuple[pd.DataFrame, np.ndarray]:
+    if len(raw) <= sample_rows:
+        return raw.reset_index(drop=True), target
+    rng = np.random.default_rng(seed)
+    pick = np.zeros(len(raw), dtype=bool)
+    for label in (0, 1):
+        idx = np.where(target == label)[0]
+        take = int(round(sample_rows * len(idx) / len(raw)))
+        pick[rng.choice(idx, size=min(take, len(idx)), replace=False)] = True
+    return raw.iloc[pick].reset_index(drop=True), target[pick]
+
+
+def _load_sba_foia(path: Path, sample_rows: int, seed: int) -> RealDataset:
+    """SBA 7(a) FOIA export (data.sba.gov): the LoanStatus / GrossApproval schema."""
+    raw = pd.read_csv(path, low_memory=False)
+    raw = raw[raw["LoanStatus"].astype(str).str.upper().isin(["PIF", "CHGOFF"])].copy()
+    target = (raw["LoanStatus"].astype(str).str.upper() == "CHGOFF").astype(int).to_numpy()
+    raw, target = _stratified_sample(raw, target, sample_rows, seed)
+
+    business_type = raw.get("BusinessType")
+    features = pd.DataFrame(
+        {
+            "term_months": pd.to_numeric(raw.get("TermInMonths"), errors="coerce"),
+            "jobs_supported": pd.to_numeric(raw.get("JobsSupported"), errors="coerce"),
+            "gross_approval": _clean_currency(raw.get("GrossApproval")),
+            "sba_guaranteed": _clean_currency(raw.get("SBAGuaranteedApproval")),
+            "initial_interest_rate": pd.to_numeric(raw.get("InitialInterestRate"), errors="coerce"),
+            "business_indiv": (
+                business_type.astype(str).str.upper() == "INDIVIDUAL"
+            ).astype(int) if business_type is not None else 0,
+            "business_corp": (
+                business_type.astype(str).str.upper() == "CORPORATION"
+            ).astype(int) if business_type is not None else 0,
+            "naics_sector": pd.to_numeric(raw.get("NAICSCode").astype(str).str[:2], errors="coerce"),
+        }
+    )
+    features["sba_guarantee_share"] = features["sba_guaranteed"] / features["gross_approval"].replace(0, np.nan)
+
+    approval_year = pd.to_numeric(raw.get("ApprovalFiscalYear"), errors="coerce")
+    split_column = approval_year if approval_year.notna().mean() > 0.9 else None
+    notes = (
+        "US SBA 7(a) FOIA export from data.sba.gov (real MSME-analog defaults). "
+        "Label LoanStatus: CHGOFF=1 (charged off), PIF=0 (paid in full)."
+    )
+    return RealDataset("SBA 7(a) FOIA", "real MSME defaults", features, target, split_column, notes)
 
 
 def _load_sba(path: Path, sample_rows: int, seed: int) -> RealDataset:
@@ -141,12 +189,30 @@ def _load_home_credit(path: Path, sample_rows: int, seed: int) -> RealDataset:
     return RealDataset("Home Credit (retail proxy)", "real retail defaults", features, target, None, notes)
 
 
+def _sba_loader_for(path: Path):
+    """Dispatch an SBA CSV to the Kaggle or the FOIA loader by its header columns."""
+    header = pd.read_csv(path, nrows=0).columns
+    if "MIS_Status" in header:
+        return _load_sba
+    if "LoanStatus" in header:
+        return _load_sba_foia
+    return None
+
+
 def load_real_dataset(sample_rows: int = 60000, seed: int = 42) -> RealDataset | None:
-    """Return the best available real default dataset, or None if none is on disk."""
-    sba_path = DATA_ROOT / "sba" / "SBAnational.csv"
-    if sba_path.exists():
-        logger.info("loading real dataset: SBA 7(a) national")
-        return _load_sba(sba_path, sample_rows, seed)
+    """Return the best available real default dataset, or None if none is on disk.
+
+    SBA is preferred. Any CSV under ``data/raw/sba/`` is auto-detected: the Kaggle
+    ``SBAnational`` schema (``MIS_Status``) and the data.sba.gov 7(a) FOIA schema
+    (``LoanStatus``) are both supported. Home Credit is the retail-proxy fallback.
+    """
+    sba_dir = DATA_ROOT / "sba"
+    if sba_dir.exists():
+        for path in sorted(sba_dir.glob("*.csv")):
+            loader = _sba_loader_for(path)
+            if loader is not None:
+                logger.info("loading real dataset: SBA 7(a) from %s", path.name)
+                return loader(path, sample_rows, seed)
     home_path = DATA_ROOT / "homecredit" / "application_train.csv"
     if home_path.exists():
         logger.info("loading real dataset: Home Credit (retail proxy)")
@@ -203,6 +269,7 @@ def run(
     logistic.fit(x.iloc[fit_idx].fillna(x.iloc[fit_idx].median()), y[fit_idx])
     log_pd = logistic.predict_proba(x.iloc[test_idx].fillna(x.iloc[fit_idx].median()))[:, 1]
     logistic_auc = float(roc_auc_score(y[test_idx], log_pd))
+    delong = delong_auc_delta(y[test_idx], pd_test, log_pd)
 
     curve = reliability_curve(y[test_idx], pd_test, bins=10)
 
@@ -222,6 +289,11 @@ def run(
         "brier": round(report.brier, 6),
         "logistic_auc": round(logistic_auc, 4),
         "gbm_lift": round(report.auc - logistic_auc, 4),
+        "delong_delta_auc": delong.delta_auc,
+        "delong_delta_ci_low": delong.delta_ci_low,
+        "delong_delta_ci_high": delong.delta_ci_high,
+        "delong_p_value": delong.p_value,
+        "delong_ci_includes_zero": delong.includes_zero,
         "bootstrap_resamples": bootstrap_resamples,
         "reliability_curve": curve,
         "notes": dataset.notes,

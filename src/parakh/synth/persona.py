@@ -31,6 +31,8 @@ BANK_FEATURES = [
 ]
 EPFO_FEATURES = ["epfo_headcount", "epfo_headcount_trend"]
 
+ALL_FEATURES = GST_FEATURES + BANK_FEATURES + EPFO_FEATURES
+
 TARGET = "default"
 
 COHORTS = 18
@@ -143,3 +145,39 @@ def generate(n: int = 4000, seed: int = 42) -> pd.DataFrame:
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-x))
+
+
+BUREAU_FEATURE = "has_bureau_file"
+
+
+def generate_through_the_door(n: int = 6000, seed: int = 42, thin_file_share: float = 0.45) -> pd.DataFrame:
+    """Generate a through-the-door MSME population with a bureau-file marker.
+
+    Extends :func:`generate` with a ``has_bureau_file`` flag. A share of the
+    population (``thin_file_share``) is thin-file: New-to-Credit firms a
+    bureau-or-collateral lender cannot underwrite because there is no credit
+    history to pull. A bureau-only lender would decline these outright, so the
+    "booked" (approved) population a traditional lender ever observes is the
+    with-bureau subset.
+
+    The marker is only weakly related to repayment: thin-file status reflects
+    credit-history thinness (younger firms, informal sectors), not creditworthiness
+    itself. Many thin-file firms carry the same alternate-data health signals
+    (turnover, cash buffer, filing discipline) as booked firms, so a cash-flow
+    scorer can recover good risks the bureau screen never sees. This is the
+    inclusion thesis, on synthetic data, made concrete.
+    """
+    df = generate(n=n, seed=seed)
+    rng = np.random.default_rng(seed + 101)
+
+    thinness = (
+        -0.9 * np.log(df["vintage_years"].to_numpy() + 1)
+        + 0.4 * (df["state"].isin(["UP", "MP", "RJ"]).to_numpy().astype(float))
+        + 0.3 * (df["sector"].isin(["Retail trade", "Logistics"]).to_numpy().astype(float))
+        + rng.normal(0, 0.6, len(df))
+    )
+    cutoff = np.quantile(thinness, 1 - thin_file_share)
+    has_bureau = (thinness < cutoff).astype(int)
+    df = df.copy()
+    df[BUREAU_FEATURE] = has_bureau
+    return df

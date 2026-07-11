@@ -7,6 +7,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from parakh.eval.delong import delong_auc_delta
 from parakh.eval.metrics import bootstrap_auc_ci
 from parakh.scoring.model import HealthModel
 from parakh.synth.persona import BANK_FEATURES, EPFO_FEATURES, GST_FEATURES, TARGET
@@ -79,7 +80,11 @@ def model_comparison(df: pd.DataFrame, valid_fraction: float = 0.2, seed: int = 
     """Test-fold AUC for a plain logistic regression versus the gradient-boosted model.
 
     Reported to pre-empt the objection that a linear model would score as well;
-    the boosted model earns its place only if it stays ahead here.
+    the boosted model earns its place only if it stays ahead here. The GBM-minus-
+    logistic AUC delta carries a DeLong 95% CI and two-sided p-value on the shared
+    test fold, so the significance of any lift is read off directly. When the CI
+    brackets zero the lift is not statistically distinguishable and the deployed
+    value is the calibrated score, not a black-box edge.
     """
     train_idx, calib_idx, test_idx = _three_way(len(df), valid_fraction, seed)
     fit_idx = np.concatenate([train_idx, calib_idx])
@@ -87,13 +92,20 @@ def model_comparison(df: pd.DataFrame, valid_fraction: float = 0.2, seed: int = 
 
     logistic = make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000))
     logistic.fit(x.iloc[fit_idx], y[fit_idx])
-    log_auc = roc_auc_score(y[test_idx], logistic.predict_proba(x.iloc[test_idx])[:, 1])
+    log_pd = logistic.predict_proba(x.iloc[test_idx])[:, 1]
+    log_auc = roc_auc_score(y[test_idx], log_pd)
 
     gbm = HealthModel().fit(x.iloc[train_idx], y[train_idx], x.iloc[calib_idx], y[calib_idx])
-    gbm_auc = roc_auc_score(y[test_idx], gbm.predict_pd(x.iloc[test_idx]))
+    gbm_pd = gbm.predict_pd(x.iloc[test_idx])
+    gbm_auc = roc_auc_score(y[test_idx], gbm_pd)
 
+    delong = delong_auc_delta(y[test_idx], gbm_pd, log_pd)
     return {
         "logistic_auc": round(float(log_auc), 3),
         "gbm_auc": round(float(gbm_auc), 3),
         "gbm_lift": round(float(gbm_auc - log_auc), 3),
+        "delta_ci_low": delong.delta_ci_low,
+        "delta_ci_high": delong.delta_ci_high,
+        "p_value": delong.p_value,
+        "delta_ci_includes_zero": delong.includes_zero,
     }

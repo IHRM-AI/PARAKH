@@ -1,10 +1,16 @@
-.PHONY: install train test serve lint web demo
+.PHONY: install train rigor real-validation test serve lint web demo
 
 install:
 	pip install -e ".[dev]"
 
 train:
 	python -m parakh.pipelines.train
+
+rigor:
+	python -m parakh.pipelines.rigor
+
+real-validation:
+	python -m parakh.pipelines.real_validation
 
 test:
 	pytest -q

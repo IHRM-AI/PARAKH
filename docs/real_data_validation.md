@@ -38,9 +38,28 @@ the time budget, so this run uses the fallback already on disk:
 
 The raw file lives under `parakh/data/raw/` and is git-ignored; it is never
 committed. Re-run with `python -m parakh.pipelines.real_validation`, which writes
-`artifacts/real_validation.json`. If an SBA export is placed at
-`data/raw/sba/SBAnational.csv`, the pipeline uses it automatically in preference
-to the retail proxy.
+`artifacts/real_validation.json`. If any SBA CSV is placed under `data/raw/sba/`,
+the pipeline auto-detects its schema and uses it in preference to the retail proxy.
+
+### Acquiring the SBA anchor
+
+Drop either of these under `parakh/data/raw/sba/` (any filename ending `.csv`);
+the loader reads the header and dispatches on the label column automatically
+(`_sba_loader_for` in `src/parakh/pipelines/real_validation.py`):
+
+- **Kaggle `SBAnational` dataset** — the widely used "Should This Loan be
+  Approved or Denied?" export. Schema: label `MIS_Status` (`CHGOFF` = default = 1,
+  `P I F` = paid in full = 0), with columns `Term`, `NoEmp`, `GrAppv`, `SBA_Appv`,
+  `NAICS`, `ApprovalFY`. Search Kaggle for "SBA national loan dataset".
+- **data.sba.gov 7(a) FOIA CSV** — the official 7(a) loan program FOIA export from
+  <https://data.sba.gov> (Loan / Grant data). Schema: label `LoanStatus`
+  (`CHGOFF` = 1, `PIF` = 0), with columns `GrossApproval`, `SBAGuaranteedApproval`,
+  `TermInMonths`, `JobsSupported`, `BusinessType`, `NAICSCode`,
+  `ApprovalFiscalYear`.
+
+Both are placed on disk manually; neither is fetched or committed by the pipeline.
+When present, the run reports SBA numbers with an out-of-time split on approval
+fiscal year.
 
 ## Results
 
@@ -54,12 +73,19 @@ rate 8.0%):
 | Brier                          | 0.069                 |
 | Logistic-regression AUC        | 0.732                 |
 | GBM lift over logistic         | +0.003                |
+| DeLong 95% CI on the lift      | [-0.006, 0.013]       |
+| DeLong p-value                 | 0.50                  |
 
 The 95% AUC confidence interval is a 500-sample case bootstrap. The GBM lift over
-a plain logistic baseline is small and positive on this retail dataset — reported
-honestly; the additive value of gradient boosting is expected to be larger on
-the MSME feature set, which carries the thresholds and interactions the synthetic
-generator encodes, but that is not claimed here.
+a plain logistic baseline is small and positive on this retail dataset, and the
+DeLong test (paired ROC AUCs on the identical test fold,
+`src/parakh/eval/delong.py`) puts a 95% CI of **[-0.006, 0.013]** around it with
+p = 0.50 — the **CI includes 0, so the lift is not statistically distinguishable**.
+Reported honestly: the deployed value of the GBM here is the calibrated,
+monotone-constrained, glass-box score, not an AUC edge over logistic. The additive
+value of gradient boosting is expected to be larger on the MSME feature set, which
+carries the thresholds and interactions the synthetic generator encodes, but that
+is not claimed here.
 
 ### Calibration
 
